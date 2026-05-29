@@ -186,8 +186,8 @@ tinybrain/
 - ✅ Phase 2: RAG 检索系统（文档分块、向量检索、LLM 增强生成）
 - ✅ Phase 3: Agent 智能体系统（Function Calling、工具插件）
 - ✅ Phase 4: 微服务化（Gateway、Nacos 服务发现）
-- 🚧 Phase 5: 可观测与工程化（日志、监控、追踪、Docker、CI/CD）
-- ⏳ Phase 6: 面试特训
+- ✅ Phase 5: 可观测与工程化（日志、监控、追踪、Docker、CI/CD）
+- ✅ Phase 6: 面试特训
 
 ## 📝 面试亮点
 
@@ -199,3 +199,6 @@ tinybrain/
 - [RAG 系统实现](./docs/phase1/04-RAG检索系统实现.md)
 - [Agent 系统实现](./docs/phase1/05-Agent智能体系统实现.md)
 - [微服务与 Spring Cloud](./docs/phase1/06-微服务化与SpringCloud.md)
+- [项目亮点与简历包装](./docs/phase6/01-项目亮点与简历包装.md)
+- [模拟面试题精讲](./docs/phase6/02-模拟面试题精讲.md)
+- [源码深挖与高频考点](./docs/phase6/03-源码深挖与高频考点.md)
