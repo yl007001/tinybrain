@@ -1,0 +1,57 @@
+server:
+  port: 8088
+
+spring:
+  application:
+    name: tinybrain-gateway
+  cloud:
+    gateway:
+      routes:
+        # 用户服务路由
+        - id: user-service
+          uri: lb://tinybrain-user
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=0
+
+        # 知识库服务路由
+        - id: knowledge-service
+          uri: lb://tinybrain-knowledge
+          predicates:
+            - Path=/api/documents/**
+          filters:
+            - StripPrefix=0
+
+        # RAG服务路由
+        - id: rag-service
+          uri: lb://tinybrain-rag
+          predicates:
+            - Path=/api/rag/**
+          filters:
+            - StripPrefix=0
+
+        # Agent服务路由
+        - id: agent-service
+          uri: lb://tinybrain-agent
+          predicates:
+            - Path=/api/agent/**
+          filters:
+            - StripPrefix=0
+
+      # 全局默认过滤器
+      default-filters:
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: 100
+            redis-rate-limiter.burstCapacity: 200
+
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
