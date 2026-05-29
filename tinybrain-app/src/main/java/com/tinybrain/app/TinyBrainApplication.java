@@ -21,7 +21,8 @@ import org.springframework.context.annotation.ComponentScan;
         "com.tinybrain.common",
         "com.tinybrain.user",
         "com.tinybrain.knowledge",
-        "com.tinybrain.rag"
+        "com.tinybrain.rag",
+        "com.tinybrain.agent"
 })
 public class TinyBrainApplication {
 
