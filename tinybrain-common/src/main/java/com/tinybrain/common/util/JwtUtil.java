@@ -2,11 +2,11 @@ package com.tinybrain.common.util;
 
 import com.tinybrain.common.constant.CommonConstant;
 import io.jsonwebtoken.*;
-import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 /**
@@ -28,7 +28,7 @@ public class JwtUtil {
     /** 过期时间：7天（毫秒） */
     private static final long EXPIRATION = 7 * 24 * 60 * 60 * 1000L;
 
-    private static final SecretKey KEY = Keys.hmacShaKeyFor(Decoders.BASE64.encode(SECRET.getBytes()).getBytes());
+    private static final SecretKey KEY = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
 
     private JwtUtil() {}
 
@@ -93,6 +93,9 @@ public class JwtUtil {
      * 校验 Token 是否有效
      */
     public static boolean validateToken(String token) {
+        if (token == null || token.isBlank()) {
+            return false;
+        }
         return parseToken(token) != null;
     }
 

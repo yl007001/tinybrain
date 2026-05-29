@@ -39,6 +39,14 @@ spring:
           filters:
             - StripPrefix=0
 
+        # Swagger UI → app 服务（聚合所有 API 文档）
+        - id: openapi
+          uri: lb://tinybrain-app
+          predicates:
+            - Path=/v3/api-docs/**, /swagger-ui/**, /swagger-ui.html
+          filters:
+            - StripPrefix=0
+
       # 全局默认过滤器
       default-filters:
         - name: RequestRateLimiter
@@ -50,8 +58,25 @@ spring:
       discovery:
         server-addr: localhost:8848
 
+# Actuator — 健康检查 + 指标 + 链路追踪
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,gateway
+        include: health,info,gateway,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    export:
+      prometheus:
+        enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+    propagation:
+      type: w3c

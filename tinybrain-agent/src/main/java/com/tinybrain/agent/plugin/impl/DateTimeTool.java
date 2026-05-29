@@ -25,7 +25,7 @@ public class DateTimeTool implements AgentTool {
 
     @Override
     public String getDescription() {
-        return "获取当前的日期和时间。当用户询问"今天几号"、"现在几点"时使用此工具。";
+        return "Get the current date and time. Use this when user asks about date or time.";
     }
 
     @Override
@@ -42,6 +42,6 @@ public class DateTimeTool implements AgentTool {
     public String execute(JsonNode args, ObjectMapper mapper) {
         String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         String time = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
-        return String.format("当前日期: %s, 当前时间: %s", date, time);
+        return String.format("Date: %s, Time: %s", date, time);
     }
 }

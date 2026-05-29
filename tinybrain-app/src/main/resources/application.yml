@@ -46,7 +46,7 @@ mybatis-plus:
     cache-enabled: false
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
-# Spring Boot Actuator（健康检查+指标暴露）
+# Spring Boot Actuator（健康检查+指标暴露+链路追踪）
 management:
   endpoints:
     web:
@@ -55,6 +55,31 @@ management:
   endpoint:
     health:
       show-details: always
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    export:
+      prometheus:
+        enabled: true
+  tracing:
+    sampling:
+      probability: 1.0  # 开发环境全量采样，生产环境可改为 0.1
+    propagation:
+      type: w3c
+
+# ========== SpringDoc OpenAPI ==========
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    display-request-duration: true
+    tags-sorter: alpha
+  packages-to-scan: com.tinybrain
+  show-actuator: true
 
 # ========== LLM API 配置 ==========
 tinybrain:

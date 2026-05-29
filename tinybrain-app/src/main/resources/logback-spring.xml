@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TinyBrain 日志配置
+
+  多环境配置（通过 springProfile 切换）:
+  - default/dev: 控制台彩色输出，适合开发调试
+  - prod:        JSON 格式输出，适合 ELK/Filebeat 采集
+  - docker:      JSON 格式 + 控制台混合，适合容器环境
+
+  MDC 字段集成（来自 Micrometer Tracing）:
+  - traceId:   链路追踪 ID（W3C TraceContext）
+  - spanId:    当前 Span ID
+  - userId:    当前操作用户（由 MDC filter 注入）
+  - requestId: HTTP 请求 ID
+-->
+<configuration>
+    <!-- Spring Boot 默认的 logback 基础配置 -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- ======================== -->
+    <!-- 变量定义                  -->
+    <!-- ======================== -->
+    <property name="APP_NAME" value="${spring.application.name:-tinybrain}"/>
+    <property name="LOG_PATH" value="${LOG_PATH:-${java.io.tmpdir}/tinybrain/logs}"/>
+    <property name="CONSOLE_LOG_PATTERN"
+              value="%clr(%d{HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%X{traceId:-}){blue} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}}"/>
+
+    <!-- ======================== -->
+    <!-- 控制台 Appender (dev)     -->
+    <!-- ======================== -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- ======================== -->
+    <!-- JSON Appender (prod)      -->
+    <!-- ======================== -->
+    <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${APP_NAME}.json</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/${APP_NAME}.%d{yyyy-MM-dd}.%i.json</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>100MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeContext>false</includeContext>
+            <customFields>{"app":"${APP_NAME}","env":"${ACTIVE_PROFILE:-prod}"}</customFields>
+            <fieldNames>
+                <timestamp>@timestamp</timestamp>
+                <version>[ignore]</version>
+                <logger>logger</logger>
+                <thread>thread</thread>
+                <level>level</level>
+                <mdc>mdc</mdc>
+            </fieldNames>
+        </encoder>
+    </appender>
+
+    <!-- ======================== -->
+    <!-- 控制台 + JSON 混合 (docker) -->
+    <!-- ======================== -->
+    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeContext>false</includeContext>
+            <customFields>{"app":"${APP_NAME}","env":"docker"}</customFields>
+            <fieldNames>
+                <timestamp>@timestamp</timestamp>
+                <version>[ignore]</version>
+                <logger>logger</logger>
+                <thread>thread</thread>
+                <level>level</level>
+                <mdc>mdc</mdc>
+            </fieldNames>
+        </encoder>
+    </appender>
+
+    <!-- ======================== -->
+    <!-- 异步包装器（生产环境用）    -->
+    <!-- ======================== -->
+    <appender name="ASYNC_JSON" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>2048</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <appender-ref ref="JSON_FILE"/>
+    </appender>
+
+    <!-- ======================== -->
+    <!-- 开发环境配置              -->
+    <!-- ======================== -->
+    <springProfile name="default | dev">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+        <logger name="com.tinybrain" level="DEBUG"/>
+    </springProfile>
+
+    <!-- ======================== -->
+    <!-- Docker 容器环境          -->
+    <!-- ======================== -->
+    <springProfile name="docker">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE_JSON"/>
+        </root>
+        <logger name="com.tinybrain" level="DEBUG"/>
+    </springProfile>
+
+    <!-- ======================== -->
+    <!-- 生产环境配置              -->
+    <!-- ======================== -->
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="ASYNC_JSON"/>
+            <appender-ref ref="CONSOLE"/>
+        </root>
+        <logger name="com.tinybrain" level="INFO"/>
+        <!-- 减少框架日志 -->
+        <logger name="org.springframework.security" level="WARN"/>
+        <logger name="org.elasticsearch.client" level="WARN"/>
+    </springProfile>
+</configuration>

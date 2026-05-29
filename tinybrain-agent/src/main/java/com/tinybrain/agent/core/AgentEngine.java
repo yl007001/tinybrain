@@ -108,17 +108,17 @@ public class AgentEngine {
      */
     public String buildSystemPrompt() {
         StringBuilder sb = new StringBuilder();
-        sb.append("你是一个智能助手，可以调用以下工具来帮助用户：\n\n");
+        sb.append("You are an AI assistant. You can use the following tools:\n\n");
 
         for (AgentTool tool : toolRegistry.values()) {
             sb.append("## ").append(tool.getName()).append("\n");
-            sb.append("描述：").append(tool.getDescription()).append("\n");
-            sb.append("参数：").append(tool.getParametersSchema().toPrettyString()).append("\n\n");
+            sb.append("Description: ").append(tool.getDescription()).append("\n");
+            sb.append("Parameters: ").append(tool.getParametersSchema().toPrettyString()).append("\n\n");
         }
 
-        sb.append("如果需要使用工具，请按以下格式返回：\n");
-        sb.append("{"tool": "工具名称", "args": {参数}}");
-        sb.append("\n执行工具后将结果整合到回答中。");
+        sb.append("To use a tool, respond with JSON format:\n");
+        sb.append("{\"tool\": \"tool_name\", \"args\": {}}\n");
+        sb.append("After executing the tool, integrate the result into your answer.\n");
 
         return sb.toString();
     }

@@ -8,6 +8,7 @@ import com.tinybrain.knowledge.mapper.DocumentMapper;
 import com.tinybrain.rag.chunk.DocChunkStrategy;
 import com.tinybrain.rag.dto.RAGResult;
 import com.tinybrain.rag.vector.VectorStore;
+import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -47,6 +48,7 @@ public class RAGService {
     /**
      * 文档引入：分块 → 向量化 → 存入向量库
      */
+    @Timed(value = "rag.index.time", description = "文档索引耗时", percentiles = {0.5, 0.95, 0.99})
     @Transactional(rollbackFor = Exception.class)
     public void indexDocument(Long documentId) {
         Document doc = documentMapper.selectById(documentId);
@@ -94,6 +96,7 @@ public class RAGService {
      * @param topK     检索 Top-K 相关块
      * @return RAG 结果（上下文 + 回答）
      */
+    @Timed(value = "rag.ask.time", description = "RAG 问答耗时", percentiles = {0.5, 0.95, 0.99})
     public RAGResult ask(String question, int topK) {
         RAGResult result = new RAGResult();
         result.setQuestion(question);

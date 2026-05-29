@@ -1,0 +1,142 @@
+# =============================================================================
+# TinyBrain — CI/CD Pipeline
+# =============================================================================
+# 触发条件:
+#   - push 到 main / develop 分支
+#   - 创建 Pull Request 到 main
+#
+# 阶段:
+#   1. 代码检查 + 单元测试
+#   2. Maven 编译打包
+#   3. Docker 镜像构建（仅 main 分支）
+#   4. 构建产物上传（可选）
+# =============================================================================
+
+name: TinyBrain CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  JAVA_VERSION: '17'
+  MAVEN_VERSION: '3.9'
+  DOCKER_IMAGE: tinybrain
+
+jobs:
+
+  # ========================
+  # Job 1: 测试 & 编译
+  # ========================
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 检出代码
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. 设置 JDK 17
+      - name: Setup JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      # 3. 编译（跳过测试，先确保编译通过）
+      - name: Compile
+        run: mvn compile -q -DskipTests
+
+      # 4. 运行单元测试
+      - name: Run Unit Tests
+        run: mvn test
+
+      # 5. 上传测试报告（测试失败时也可查看）
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: '**/target/surefire-reports/'
+          retention-days: 7
+
+      # 6. 打包
+      - name: Package
+        run: mvn package -DskipTests -q
+
+      # 7. 上传构建产物
+      - name: Upload JAR Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-jar
+          path: |
+            tinybrain-app/target/*.jar
+            tinybrain-gateway/target/*.jar
+          retention-days: 7
+
+  # ========================
+  # Job 2: Docker 镜像构建（仅 main 分支）
+  # ========================
+  docker-build:
+    name: Docker Build
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 设置 Docker Buildx（支持多架构构建）
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 构建 App 镜像
+      - name: Build App Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          tags: ${{ env.DOCKER_IMAGE }}-app:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # 构建 Gateway 镜像
+      - name: Build Gateway Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: tinybrain-gateway/Dockerfile
+          push: false
+          tags: ${{ env.DOCKER_IMAGE }}-gateway:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ========================
+  # Job 3: 代码质量检查（可选）
+  # ========================
+  code-quality:
+    name: Code Quality
+    needs: build-and-test
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      # 运行 Checkstyle（如已配置）
+      # - name: Checkstyle
+      #   run: mvn checkstyle:check

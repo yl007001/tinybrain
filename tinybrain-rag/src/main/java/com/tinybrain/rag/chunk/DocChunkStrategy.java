@@ -74,10 +74,15 @@ public class DocChunkStrategy {
                         .build());
             }
 
-            // 移动起点（带重叠）
-            start = end - overlap;
-            if (start >= content.length()) break;
-            if (start < 0) start = 0;
+            // 到达末尾则退出
+            if (end >= content.length()) break;
+
+            // 移动起点（带重叠），保证有进展防止死循环
+            int nextStart = end - overlap;
+            if (nextStart <= start) {
+                nextStart = end;
+            }
+            start = Math.max(0, nextStart);
         }
 
         return chunks;

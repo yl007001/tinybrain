@@ -1,0 +1,37 @@
+# =============================================================================
+# TinyBrain — Prometheus 采集配置
+# =============================================================================
+# 从各服务的 /actuator/prometheus 端点采集指标。
+# 配合 Grafana 实现 JVM、业务、链路等多维度监控。
+# =============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# 告警规则（可选）
+rule_files:
+  # - "alerts.yml"
+
+scrape_configs:
+
+  # Prometheus 自身指标
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # TinyBrain App 指标
+  - job_name: 'tinybrain-app'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['tinybrain-app:8080']
+        labels:
+          application: 'tinybrain-app'
+
+  # TinyBrain Gateway 指标
+  - job_name: 'tinybrain-gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['tinybrain-gateway:8088']
+        labels:
+          application: 'tinybrain-gateway'

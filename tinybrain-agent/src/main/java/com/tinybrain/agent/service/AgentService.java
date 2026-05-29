@@ -5,6 +5,7 @@ import com.tinybrain.agent.core.AgentEngine;
 import com.tinybrain.agent.dto.AgentRequest;
 import com.tinybrain.agent.dto.AgentResponse;
 import com.tinybrain.rag.service.LLMApiClient;
+import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -38,6 +39,7 @@ public class AgentService {
     /**
      * 处理 Agent 对话
      */
+    @Timed(value = "agent.process.time", description = "Agent 对话处理耗时", percentiles = {0.5, 0.95, 0.99})
     public AgentResponse process(AgentRequest request) {
         String sessionId = request.getSessionId() != null ? request.getSessionId() : UUID.randomUUID().toString();
         AgentResponse response = new AgentResponse();

@@ -51,6 +51,11 @@ public class R<T> implements Serializable {
         return new R<>(200, message, data);
     }
 
+    /** 仅返回成功消息（无数据体） */
+    public static R<Void> okMsg(String message) {
+        return new R<>(200, message, null);
+    }
+
     // ========== 失败响应 ==========
 
     public static <T> R<T> fail(String message) {

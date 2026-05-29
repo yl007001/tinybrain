@@ -1,0 +1,200 @@
+# =============================================================================
+# TinyBrain — Docker Compose 开发/演示环境
+# =============================================================================
+# 启动所有服务:
+#   docker-compose up -d
+#
+# 查看日志:
+#   docker-compose logs -f tinybrain-app
+#
+# 停止:
+#   docker-compose down -v
+#
+# 访问地址:
+#   TinyBrain App:     http://localhost:8080/swagger-ui.html
+#   Gateway:           http://localhost:8088/actuator/health
+#   Prometheus:        http://localhost:9090
+#   Grafana:           http://localhost:3000 (admin/admin)
+#   Zipkin:            http://localhost:9411
+#   MySQL:             localhost:3306 (root/tinybrain2026)
+#   Redis:             localhost:6379
+#   Elasticsearch:     http://localhost:9200
+# =============================================================================
+
+version: "3.8"
+
+services:
+
+  # ========================
+  # MySQL 8 — 业务数据库
+  # ========================
+  mysql:
+    image: mysql:8.0
+    container_name: tinybrain-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: tinybrain2026
+      MYSQL_DATABASE: tinybrain
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./tinybrain-app/src/main/resources/sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tinybrain-net
+
+  # ========================
+  # Redis 7 — 缓存/限流
+  # ========================
+  redis:
+    image: redis:7-alpine
+    container_name: tinybrain-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - tinybrain-net
+
+  # ========================
+  # Elasticsearch — 全文检索
+  # ========================
+  elasticsearch:
+    image: elasticsearch:7.17.24
+    container_name: tinybrain-es
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    networks:
+      - tinybrain-net
+
+  # ========================
+  # Prometheus — 指标采集
+  # ========================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: tinybrain-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - tinybrain-net
+
+  # ========================
+  # Grafana — 可视化大盘
+  # ========================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: tinybrain-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./deploy/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./deploy/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - tinybrain-net
+
+  # ========================
+  # Zipkin — 链路追踪
+  # ========================
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: tinybrain-zipkin
+    ports:
+      - "9411:9411"
+    environment:
+      - STORAGE_TYPE=mem
+    networks:
+      - tinybrain-net
+
+  # ========================
+  # TinyBrain App — 主应用
+  # ========================
+  tinybrain-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tinybrain-app
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - TINYBRAIN_LLM_KEY=${TINYBRAIN_LLM_KEY:-sk-your-api-key}
+      - JAVA_OPTS=-Xms256m -Xmx512m
+    depends_on:
+      mysql:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - tinybrain-net
+
+  # ========================
+  # TinyBrain Gateway — API 网关
+  # ========================
+  tinybrain-gateway:
+    build:
+      context: .
+      dockerfile: tinybrain-gateway/Dockerfile
+    container_name: tinybrain-gateway
+    ports:
+      - "8088:8088"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - JAVA_OPTS=-Xms128m -Xmx256m
+    depends_on:
+      - tinybrain-app
+      - redis
+    networks:
+      - tinybrain-net
+
+# ========================
+# 持久化卷
+# ========================
+volumes:
+  mysql-data:
+  es-data:
+  prometheus-data:
+  grafana-data:
+
+# ========================
+# 网络
+# ========================
+networks:
+  tinybrain-net:
+    driver: bridge
