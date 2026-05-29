@@ -1,0 +1,37 @@
+spring:
+  devtools:
+    restart:
+      enabled: true
+      additional-paths: src/main/java
+
+  # 开发环境使用 H2 内存数据库（无需安装 MySQL）
+  # 生产环境请切换为 MySQL 配置
+  datasource:
+    url: jdbc:h2:mem:tinybrain;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  # JPA DDL（配合 MyBatis-Plus 初始化表结构）
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:sql/schema.sql
+
+  # Elasticsearch 开发环境可跳过
+  elasticsearch:
+    uris: http://localhost:9200
+
+mybatis-plus:
+  configuration:
+    # 开发环境打印 SQL
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+logging:
+  level:
+    com.tinybrain: DEBUG

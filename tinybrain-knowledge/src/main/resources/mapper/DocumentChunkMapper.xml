@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tinybrain.knowledge.mapper.DocumentChunkMapper">
+
+    <select id="selectByDocumentIdOrderByIndex" resultType="com.tinybrain.knowledge.entity.DocumentChunk">
+        SELECT id, document_id, chunk_index, content, chunk_meta, create_time
+        FROM kb_document_chunk
+        WHERE document_id = #{documentId}
+        ORDER BY chunk_index ASC
+    </select>
+
+    <delete id="deleteByDocumentId">
+        DELETE FROM kb_document_chunk
+        WHERE document_id = #{documentId}
+    </delete>
+</mapper>

@@ -1,0 +1,30 @@
+# Java
+*.class
+*.jar
+*.war
+target/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+*.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Maven
+log/
+*.log
+
+# 项目临时文件
+tmp/
+
+# 环境配置（含敏感信息）
+application-local.yml
+application-prod.yml
+*.local.*
