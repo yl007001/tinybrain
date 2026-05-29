@@ -56,6 +56,12 @@ management:
     health:
       show-details: always
 
+# ========== LLM API 配置 ==========
+tinybrain:
+  llm:
+    api-key: ${TINYBRAIN_LLM_KEY:sk-your-api-key-here}
+    base-url: https://api.deepseek.com
+
 # 日志配置
 logging:
   level:

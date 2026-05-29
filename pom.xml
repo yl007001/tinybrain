@@ -23,6 +23,7 @@
         <module>tinybrain-common</module>
         <module>tinybrain-user</module>
         <module>tinybrain-knowledge</module>
+        <module>tinybrain-rag</module>
         <module>tinybrain-app</module>
     </modules>
 
@@ -101,6 +102,11 @@
             <dependency>
                 <groupId>com.tinybrain</groupId>
                 <artifactId>tinybrain-knowledge</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.tinybrain</groupId>
+                <artifactId>tinybrain-rag</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>

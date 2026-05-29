@@ -9,54 +9,30 @@
         <version>1.0.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>tinybrain-app</artifactId>
+    <artifactId>tinybrain-rag</artifactId>
     <packaging>jar</packaging>
-    <description>启动入口</description>
+    <description>RAG模块 — 向量化、语义检索、LLM增强生成</description>
 
     <dependencies>
         <dependency>
             <groupId>com.tinybrain</groupId>
-            <artifactId>tinybrain-user</artifactId>
+            <artifactId>tinybrain-common</artifactId>
         </dependency>
         <dependency>
             <groupId>com.tinybrain</groupId>
             <artifactId>tinybrain-knowledge</artifactId>
         </dependency>
-        <dependency>
-            <groupId>com.tinybrain</groupId>
-            <artifactId>tinybrain-rag</artifactId>
-        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+            <scope>provided</scope>
         </dependency>
 
+        <!-- WebClient 用于调用 LLM API -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
-
-        <!-- H2 内存数据库（开发环境使用） -->
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
-        <!-- Spring Boot 热部署（开发阶段用） -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-devtools</artifactId>
-            <scope>runtime</scope>
-            <optional>true</optional>
-        </dependency>
-
-        <!-- 配置处理器 -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-configuration-processor</artifactId>
-            <optional>true</optional>
+            <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
 
         <dependency>
@@ -71,13 +47,4 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
-    </build>
 </project>
