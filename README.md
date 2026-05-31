@@ -33,9 +33,6 @@
 | **Function Calling** | 手写 JSON Schema + AgentEngine 调度引擎 | `@Tool` 注解 + ChatClient 自动调度 |
 | **重试/熔断** | Resilience4j 手配 | Spring AI 自动重试 |
 | **供应商** | DeepSeek / OpenAI / Ollama | DashScope (通义千问) — 可扩展 |
-| **适用场景** | 面试展示"我懂底层原理" | 面试展示"我有框架思维" |
-
-> 💡 **面试价值**：两个版本可以串讲——"先手写理解原理，再用框架提升生产力，展示完整的技术判断力"
 
 ## 🏗 系统架构
 
@@ -225,10 +222,10 @@ tinybrain/
 - ✅ Phase 3: Agent 智能体系统（Function Calling、工具插件）
 - ✅ Phase 4: 微服务化（Gateway、Nacos 服务发现）
 - ✅ Phase 5: 可观测与工程化（日志、监控、追踪、Docker、CI/CD）
-- ✅ Phase 6: 面试特训
+- ✅ Phase 6: 项目收尾与文档
 - ✅ **双版本拆分**: v1-handcrafted (手写 AI) + v2-spring-ai-alibaba (Spring AI Alibaba)
 
-## 📝 面试亮点
+## 📝 技术文档
 
 详见 `docs/` 目录：
 
