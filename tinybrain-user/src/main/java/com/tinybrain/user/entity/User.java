@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 系统用户实体
  * <p>
  * 对应表 sys_user，使用 MyBatis-Plus 注解映射。
- * 字段设计覆盖大厂常用的用户模型：基础信息 + 角色 + 状态 + 逻辑删除 + 时间审计。
+ * 字段设计覆盖常见常用的用户模型：基础信息 + 角色 + 状态 + 逻辑删除 + 时间审计。
  */
 @Data
 @TableName("sys_user")

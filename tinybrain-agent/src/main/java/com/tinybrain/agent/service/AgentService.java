@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 2. 工具执行结果回填
  * 3. 多轮 Function Calling 自动循环
  * <p>
- * 面试重点：
+ * ：
  * 1. Spring AI Function Calling vs 手写 Function Calling 的优劣
  * 2. ToolCallback 注册和自动发现机制
  * 3. 会话记忆管理：上下文窗口大小控制

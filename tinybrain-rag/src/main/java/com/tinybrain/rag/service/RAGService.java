@@ -31,7 +31,7 @@ import java.util.stream.IntStream;
  * 1. 文档引入：分块 → EmbeddingModel 向量化 → VectorStore 存储
  * 2. RAG 问答：EmbeddingModel 向量化问题 → VectorStore 检索 → LLM 生成
  * <p>
- * 面试重点：
+ * ：
  * - Spring AI 的 ChatClient / EmbeddingModel / VectorStore SPI 抽象
  * - 依赖倒置：平台无关的 AI 接口设计
  * - 自动配置：通过 spring.factories 加载不同 Provider

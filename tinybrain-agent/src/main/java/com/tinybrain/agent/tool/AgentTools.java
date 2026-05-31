@@ -21,7 +21,7 @@ import java.time.format.DateTimeFormatter;
  * 相比 v1-handcrafted 的手动 JSON Schema + AgentEngine 注册，
  * v2 无需手写参数 Schema，无需维护工具注册表。
  * <p>
- * 面试重点：
+ * ：
  * 1. Spring AI @Tool 注解原理：AOP + 反射生成 ToolDefinition
  * 2. Function Calling 流程：LLM → Tool Schema → 执行 → 回填
  * 3. 无状态设计：每个工具方法独立可测

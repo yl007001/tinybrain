@@ -20,7 +20,7 @@ import java.util.stream.IntStream;
  * - 阿里云 DashScope (通义千问) — 默认
  * - OpenAI / DeepSeek — 通过配置切换
  * <p>
- * 面试重点：
+ * ：
  * 1. Spring AI 统一抽象：ChatClient / ChatModel / EmbeddingModel
  * 2. 自动配置原理：spring.factories → DashScopeAutoConfiguration
  * 3. 回退策略：配置多组 model 实现高可用

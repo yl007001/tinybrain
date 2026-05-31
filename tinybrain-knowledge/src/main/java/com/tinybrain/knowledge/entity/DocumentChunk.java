@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  * - Phase 2：每个 chunk 生成 Embedding 向量，存入向量库做 RAG
  * - 分块策略影响检索精度，是 RAG 系统的核心优化点
  * <p>
- * 面试重点：
+ * ：
  * 1. 分块粒度：太小丢语义，太大超 Token 限制
  * 2. 重叠策略：相邻块保留部分重叠，防止边界断句
  * 3. 结构化分块：Markdown 按标题分块，代码按函数分块

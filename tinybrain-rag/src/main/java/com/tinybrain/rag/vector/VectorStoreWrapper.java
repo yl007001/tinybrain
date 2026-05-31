@@ -15,12 +15,12 @@ import java.util.stream.Collectors;
  * 基于 Spring AI 抽象的向量存储封装。
  * 当前使用内存存储（ConcurrentHashMap），保持与 v1 兼容的 API。
  * <p>
- * 可升级方案（面试重点）：
+ * 可升级方案：
  * 1. 替换为 Spring AI VectorStore 实现（SimpleVectorStore / RedisVectorStore / PGVectorStore）
  * 2. 使用 VectorStore 接口 + @Qualifier 注入不同实现
  * 3. 配置中心动态切换向量库类型
  * <p>
- * 面试重点：
+ * ：
  * 1. 向量的余弦相似度计算原理
  * 2. 全量扫描 vs ANN (IVF, HNSW) 索引
  * 3. 元数据过滤（Metadata Filter）提升检索精度
