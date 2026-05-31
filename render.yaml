@@ -1,18 +1,16 @@
-# TinyBrain Render 部署配置
+# TinyBrain Render 部署配置 (v1-handcrafted)
 # https://render.com 免费层部署
 # 使用 H2 内存数据库，无需 MySQL/Redis/ES
-# LLM 功能需设置环境变量 AI_DASHSCOPE_API_KEY
+# 此版本使用手写 WebClient 调用 LLM API
 
 services:
   - type: web
-    name: tinybrain
+    name: tinybrain-v1
     env: java
     plan: free
     buildCommand: mvn clean package -DskipTests -pl tinybrain-app -am
     startCommand: cd tinybrain-app && java -jar target/*.jar --spring.profiles.active=dev
     envVars:
-      - key: AI_DASHSCOPE_API_KEY
-        value: your-api-key-here
       - key: TINYBRAIN_LLM_KEY
         sync: false
       - key: SPRING_PROFILES_ACTIVE
