@@ -7,32 +7,27 @@ import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 /**
- * 内存向量存储
+ * 向量存储 — v2 Spring AI Alibaba 版
  * <p>
- * 使用 ConcurrentHashMap 存储文档块向量，支持：
- * - 插入向量
- * - 余弦相似度检索（Top-K）
- * - 按文档ID删除
+ * 基于 Spring AI 抽象的向量存储封装。
+ * 当前使用内存存储（ConcurrentHashMap），保持与 v1 兼容的 API。
  * <p>
- * 设计考量：
- * - Phase 2：内存存储，快速开发验证
- * - Phase 2+：替换为 ChromaDB / Milvus 持久化方案
+ * 可升级方案（面试重点）：
+ * 1. 替换为 Spring AI VectorStore 实现（SimpleVectorStore / RedisVectorStore / PGVectorStore）
+ * 2. 使用 VectorStore 接口 + @Qualifier 注入不同实现
+ * 3. 配置中心动态切换向量库类型
  * <p>
  * 面试重点：
- * 1. 余弦相似度 vs 欧氏距离 vs 点积
- * 2. 全量扫描 vs ANN (Approximate Nearest Neighbor) 索引
- * 3. HNSW / IVF 等向量索引原理
+ * 1. 向量的余弦相似度计算原理
+ * 2. 全量扫描 vs ANN (IVF, HNSW) 索引
+ * 3. 元数据过滤（Metadata Filter）提升检索精度
  */
 @Slf4j
 @Component
-public class VectorStore {
-
-    /** 向量维度（由 LLM 模型决定，DeepSeek/OpenAI 通常为 1536 或 1024） */
-    private int dimension = 1024;
+public class VectorStoreWrapper {
 
     /** 存储结构：chunkId → 向量 */
     private final ConcurrentHashMap<Long, float[]> store = new ConcurrentHashMap<>();
@@ -42,26 +37,14 @@ public class VectorStore {
 
     @PostConstruct
     public void init() {
-        log.info("VectorStore 初始化完成，维度: {}", dimension);
-    }
-
-    /**
-     * 设置向量维度（在首次插入前调用）
-     */
-    public void setDimension(int dimension) {
-        this.dimension = dimension;
+        log.info("VectorStoreWrapper 初始化完成 (v2 Spring AI Alibaba 版)");
     }
 
     /**
      * 插入或更新向量
-     *
-     * @param chunkId    分块ID
-     * @param documentId 文档ID
-     * @param vector     浮点数向量
      */
     public void upsert(Long chunkId, Long documentId, List<Double> vector) {
-        float[] arr = listToArray(vector);
-        store.put(chunkId, arr);
+        store.put(chunkId, listToArray(vector));
         chunkDocMap.put(chunkId, documentId);
     }
 
@@ -78,10 +61,6 @@ public class VectorStore {
 
     /**
      * 余弦相似度 Top-K 检索
-     *
-     * @param queryVector 查询向量
-     * @param topK        返回前 K 个结果
-     * @return 相似度排序结果
      */
     public List<SearchResult> search(List<Double> queryVector, int topK) {
         float[] query = listToArray(queryVector);
@@ -91,7 +70,7 @@ public class VectorStore {
                     float similarity = cosineSimilarity(query, entry.getValue());
                     return new SearchResult(entry.getKey(), chunkDocMap.get(entry.getKey()), similarity);
                 })
-                .filter(r -> r.getScore() > 0.3) // 过滤低相似度结果
+                .filter(r -> r.getScore() > 0.3)
                 .sorted((a, b) -> Float.compare(b.getScore(), a.getScore()))
                 .limit(topK)
                 .collect(Collectors.toList());
@@ -134,7 +113,6 @@ public class VectorStore {
     /**
      * 余弦相似度
      * cos(θ) = (A·B) / (||A|| × ||B||)
-     * 值域 [-1, 1]，越高越相似
      */
     private float cosineSimilarity(float[] a, float[] b) {
         float dotProduct = 0;

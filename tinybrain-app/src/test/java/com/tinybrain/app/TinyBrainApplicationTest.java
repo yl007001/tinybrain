@@ -14,7 +14,7 @@ import org.springframework.test.context.TestPropertySource;
 @ActiveProfiles("dev")
 @TestPropertySource(properties = {
         "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchRestClientAutoConfiguration",
-        "tinybrain.llm.api-key=test-key"
+        "spring.ai.dashscope.api-key=test-key"
 })
 class TinyBrainApplicationTest {
 

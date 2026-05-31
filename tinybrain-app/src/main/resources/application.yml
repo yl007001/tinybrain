@@ -31,6 +31,21 @@ spring:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
 
+  # v2 Spring AI Alibaba — DashScope（阿里通义千问）
+  ai:
+    dashscope:
+      api-key: ${AI_DASHSCOPE_API_KEY:${TINYBRAIN_LLM_KEY:sk-your-api-key-here}}
+      chat:
+        options:
+          model: qwen-plus
+      embedding:
+        options:
+          model: text-embedding-v2
+    # SimpleVectorStore 持久化路径
+    vectorstore:
+      simple:
+        persistence-path: data/vectorstore/vectors.json
+
 # MyBatis-Plus 配置
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
@@ -80,12 +95,6 @@ springdoc:
     tags-sorter: alpha
   packages-to-scan: com.tinybrain
   show-actuator: true
-
-# ========== LLM API 配置 ==========
-tinybrain:
-  llm:
-    api-key: ${TINYBRAIN_LLM_KEY:sk-your-api-key-here}
-    base-url: https://api.deepseek.com
 
 # 日志配置
 logging:

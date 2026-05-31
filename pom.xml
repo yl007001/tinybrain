@@ -41,6 +41,7 @@
         <springdoc.version>2.6.0</springdoc.version>
         <logstash-encoder.version>7.4</logstash-encoder.version>
         <micrometer-tracing.version>1.3.4</micrometer-tracing.version>
+        <spring-ai-alibaba.version>1.0.0.2</spring-ai-alibaba.version>
     </properties>
 
     <dependencyManagement>
@@ -120,6 +121,15 @@
                 <groupId>io.micrometer</groupId>
                 <artifactId>micrometer-tracing-bridge-brave</artifactId>
                 <version>${micrometer-tracing.version}</version>
+            </dependency>
+
+            <!-- Spring AI Alibaba BOM -->
+            <dependency>
+                <groupId>com.alibaba.cloud.ai</groupId>
+                <artifactId>spring-ai-alibaba-bom</artifactId>
+                <version>${spring-ai-alibaba.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
 
             <!-- Logstash Logback Encoder（JSON 日志） -->
