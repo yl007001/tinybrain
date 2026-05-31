@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * RAG 核心服务 — v2 Spring AI 版
@@ -122,13 +123,12 @@ public class RAGService {
         result.setQuestion(rewrittenQuery != null ? rewrittenQuery : question);
         log.info("原始问题: {} → 改写后: {}", question, result.getQuestion());
 
-        // Step 2: 问题向量化（Spring AI EmbeddingModel）
-        List<Double> queryVector = embeddingModel.embed(result.getQuestion()).stream()
-                .map(Double::valueOf)
-                .toList();
-        if (queryVector == null || queryVector.isEmpty()) {
+        // Step 2: 问题向量化（Spring AI EmbeddingModel — 返回 float[]）
+        float[] queryEmbedding = embeddingModel.embed(result.getQuestion());
+        if (queryEmbedding == null || queryEmbedding.length == 0) {
             throw BusinessException.badRequest("问题向量化失败，请检查 EmbeddingModel 配置");
         }
+        List<Double> queryVector = floatToList(queryEmbedding);
 
         // Step 3: 向量检索 Top-K（Spring AI VectorStore）
         List<VectorStoreWrapper.SearchResult> hits = vectorStore.search(queryVector, topK);
@@ -202,21 +202,19 @@ public class RAGService {
     }
 
     /**
-     * 批量嵌入（Spring AI EmbeddingModel）
+     * 批量嵌入（Spring AI EmbeddingModel — 返回 List<Embedding>）
      */
     private List<List<Double>> batchEmbed(List<String> texts) {
         if (texts == null || texts.isEmpty()) return Collections.emptyList();
         if (texts.size() == 1) {
-            List<Double> vec = embeddingModel.embed(texts.get(0)).stream()
-                    .map(Double::valueOf)
-                    .toList();
+            List<Double> vec = floatToList(embeddingModel.embed(texts.get(0)));
             return vec != null ? List.of(vec) : Collections.emptyList();
         }
 
         try {
-            var result = embeddingModel.embed(texts);
-            return result.stream()
-                    .map(r -> r.stream().map(Double::valueOf).toList())
+            var results = embeddingModel.embed(texts);
+            return results.stream()
+                    .map(this::floatToList)
                     .toList();
         } catch (Exception e) {
             log.warn("批量嵌入失败: {}", e.getMessage());
@@ -224,7 +222,17 @@ public class RAGService {
 
         // 回退：逐条调用
         return texts.stream()
-                .map(t -> embeddingModel.embed(t).stream().map(Double::valueOf).toList())
+                .map(t -> floatToList(embeddingModel.embed(t)))
+                .toList();
+    }
+
+    /**
+     * float[] → List<Double> 工具方法
+     */
+    private List<Double> floatToList(float[] arr) {
+        if (arr == null) return null;
+        return IntStream.range(0, arr.length)
+                .mapToObj(i -> (double) arr[i])
                 .toList();
     }
 

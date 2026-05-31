@@ -4,12 +4,11 @@ import com.tinybrain.common.exception.BusinessException;
 import io.micrometer.core.annotation.Timed;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.embedding.EmbeddingModel;
-import org.springframework.ai.embedding.EmbeddingRequest;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.IntStream;
 
 /**
  * LLM API 客户端 — v2 Spring AI Alibaba 版
@@ -66,18 +65,17 @@ public class LLMApiClient {
     @Timed(value = "llm.chat.full.time", description = "LLM Chat 全参数耗时")
     public String chat(List<ChatMessage> messages, double temperature, int maxTokens) {
         try {
-            var builder = chatClient.prompt();
+            var prompt = chatClient.prompt();
 
             for (ChatMessage msg : messages) {
                 switch (msg.role()) {
-                    case "system" -> builder.system(msg.content());
-                    case "user" -> builder.user(msg.content());
-                    case "assistant" -> builder.user(u -> u.text(msg.content())); // Spring AI 没有直接 add assistant 的方法
+                    case "system" -> prompt.system(msg.content());
+                    case "user" -> prompt.user(msg.content());
+                    case "assistant" -> prompt.user(u -> u.text(msg.content()));
                 }
             }
 
-            var response = builder.call().chatResponse();
-            return response != null ? response.getResult().getOutput().getContent() : null;
+            return prompt.call().content();
         } catch (Exception e) {
             log.error("LLM Chat 全参数调用失败: {}", e.getMessage());
             return null;
@@ -99,12 +97,14 @@ public class LLMApiClient {
 
     /**
      * 批量文本向量化
+     * <p>
+     * 注意：EmbeddingModel.embed(List(String)) 返回 List(float[]) 在 Spring AI 1.0.0 中
      */
     public List<List<Double>> embed(List<String> texts) {
         try {
-            var result = embeddingModel.embed(new EmbeddingRequest(texts, org.springframework.ai.embedding.EmbeddingOptions.EMPTY));
-            return result.getResults().stream()
-                    .map(r -> floatToList(r.getOutput()))
+            var results = embeddingModel.embed(texts);
+            return results.stream()
+                    .map(this::floatToList)
                     .toList();
         } catch (Exception e) {
             log.error("批量 Embedding 失败: {}", e.getMessage());
@@ -116,7 +116,7 @@ public class LLMApiClient {
      * 创建带工具的 ChatClient（用于 Agent 模块）
      */
     public ChatClient createToolEnabledClient(Object... tools) {
-        return ChatClient.builder(chatClient)
+        return chatClient.mutate()
                 .defaultTools(tools)
                 .build();
     }

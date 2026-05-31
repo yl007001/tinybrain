@@ -110,8 +110,8 @@ public class AgentService {
                 if (output != null && output.getToolCalls() != null) {
                     output.getToolCalls().forEach(tc -> {
                         AgentResponse.ToolCall toolCall = new AgentResponse.ToolCall();
-                        toolCall.setToolName(tc.getName());
-                        toolCall.setArgs(tc.getArguments());
+                        toolCall.setToolName(tc.name());
+                        toolCall.setArgs(tc.arguments());
                         toolCall.setResult("已执行");
                         response.getToolCalls().add(toolCall);
                     });
