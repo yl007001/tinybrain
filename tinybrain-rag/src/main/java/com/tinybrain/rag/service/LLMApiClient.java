@@ -29,7 +29,7 @@ import java.util.List;
  * - 兼容任何 OpenAI 格式的 API（DeepSeek、通义千问、Ollama 等）
  * - Resilience4j 熔断 + 重试，防止 LLM API 故障级联
  * <p>
- * 面试重点：
+ * ：
  * 1. 熔断器模式(Circuit Breaker)防止级联故障
  * 2. 重试策略(Retry)处理临时网络故障
  * 3. 背压(Backpressure)与超时控制

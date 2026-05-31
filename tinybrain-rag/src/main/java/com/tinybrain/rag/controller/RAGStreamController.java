@@ -38,7 +38,7 @@ import java.util.concurrent.Executors;
  *   event: complete
  *   data: {}
  * <p>
- * 面试重点：
+ * ：
  * 1. SSE vs WebSocket vs 轮询的选型
  * 2. SSE 天然基于 HTTP，适合单向推送
  * 3. WebSocket 适合双向通信（Chat 场景）

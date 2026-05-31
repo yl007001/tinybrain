@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
  * - Phase 2：内存存储 + JSON 文件持久化，快速开发验证
  * - Phase 3+：可替换为 ChromaDB / Milvus / FAISS 生产方案
  * <p>
- * 面试重点：
+ * ：
  * 1. 余弦相似度 vs 欧氏距离 vs 点积
  * 2. 全量扫描 vs ANN (Approximate Nearest Neighbor) 索引
  * 3. HNSW / IVF 等向量索引原理

@@ -24,7 +24,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * - RBAC 通过 @PreAuthorize 注解实现
  * - 密码使用 BCrypt 加密
  * <p>
- * 面试重点：
+ * ：
  * 1. SecurityFilterChain 是 Spring Security 的核心过滤器链配置
  * 2. SessionCreationPolicy.STATELESS 表示无状态认证
  * 3. BCryptPasswordEncoder 内置加盐，无需额外处理

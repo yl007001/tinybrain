@@ -27,7 +27,7 @@ import java.time.Duration;
  * - 缓存 TTL 策略：RAG 结果 5 分钟，文档列表 5 分钟
  * - RedisTemplate 支持泛型操作
  * <p>
- * 面试重点：
+ * ：
  * 1. Redis 缓存穿透 / 击穿 / 雪崩的解决方案
  * 2. 缓存更新策略：Cache-Aside vs Read-Through vs Write-Through
  * 3. 序列化方式选择：JDK vs JSON vs Protobuf

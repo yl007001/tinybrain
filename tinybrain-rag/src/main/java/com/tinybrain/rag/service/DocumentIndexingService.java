@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
  * 文档索引（分块 → 向量化 → 存储）是耗时操作，
  * 通过 @Async 在后台线程池执行，不阻塞 HTTP 请求。
  * <p>
- * 面试重点：
+ * ：
  * 1. 异步处理 vs 同步处理的选择
  * 2. 线程池隔离：索引任务不占用 HTTP 线程
  * 3. 失败重试：索引失败需要有重试机制

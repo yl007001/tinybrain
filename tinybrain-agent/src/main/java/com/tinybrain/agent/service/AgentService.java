@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 将 Agent 引擎与 LLM API 串联，实现完整的 Function Calling 循环：
  * 用户输入 → LLM 判断 → 调用工具 → 结果回填 → LLM 生成 → 返回
  * <p>
- * 面试重点：
+ * ：
  * 1. ReAct 模式：Reason + Act 交替循环
  * 2. 循环终止条件：达到最大轮数 / LLM 不再调用工具
  * 3. 记忆管理：多轮对话上下文的拼接

@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
  * - 分页插件（自动识别数据库类型）
  * - 自动填充处理器（createTime / updateTime）
  * <p>
- * 面试重点：
+ * ：
  * 1. PaginationInnerInterceptor 原理：拦截 SQL，自动拼接 COUNT + LIMIT
  * 2. MetaObjectHandler 在 insert/update 时自动注入字段值
  * 3. 分页插件需要注册为 @Bean，且只能有一个拦截器实例

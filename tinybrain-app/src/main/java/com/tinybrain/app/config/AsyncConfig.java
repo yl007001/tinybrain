@@ -13,7 +13,7 @@ import java.util.concurrent.Executor;
  * <p>
  * 用于 @Async 异步执行耗时操作（如文档索引、批量嵌入等）。
  * <p>
- * 面试重点：
+ * ：
  * 1. ThreadPoolTaskExecutor vs ThreadPoolExecutor
  * 2. 核心线程数 / 最大线程数 / 队列容量的调优
  * 3. 拒绝策略：CallerRunsPolicy 保证任务不丢失

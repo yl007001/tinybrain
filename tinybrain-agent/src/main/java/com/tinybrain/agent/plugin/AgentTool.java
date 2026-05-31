@@ -10,7 +10,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * 所有可被 Agent 调用的工具都要实现此接口。
  * 通过 SPI 机制动态加载，支持热插拔。
  * <p>
- * 面试重点：
+ * ：
  * 1. 策略模式 — 每个 Tool 封装一种能力
  * 2. SPI 机制 — 运行时动态发现和加载
  * 3. JSON Schema — 描述工具参数，LLM 按 Schema 生成调用

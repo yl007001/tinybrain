@@ -57,12 +57,10 @@ tinybrain/                          # ← 这是项目根目录
 ├── Dockerfile                      # Docker 镜像构建文件
 ├── pom.xml                         # Maven 项目配置文件（所有依赖在这里）
 │
-├── TinyBrain-项目经历.docx          # 简历用
-├── TinyBrain-求职战略指南.docx       # 求职用
 ├── TinyBrain-从零开始使用手册.md      # ◀ 就是你现在看的这个
 │
-└── docs/                           # 各种文档
-    └── interview/                  # 面试准备资料
+├── docs/                           # 纯技术文档
+└── E:/1/面试专题/                   # 面试备战资料（项目外）
 ```
 
 ---

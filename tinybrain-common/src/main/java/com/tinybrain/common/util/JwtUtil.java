@@ -20,7 +20,7 @@ import java.util.Date;
  * - 密钥安全生成（HMAC-SHA256）
  * - 密钥从环境变量 TINYBRAIN_JWT_SECRET 读取
  * <p>
- * 面试重点：
+ * ：
  * 1. JWT 结构：Header.Payload.Signature
  * 2. 对称签名 vs 非对称签名（HMAC-SHA256 vs RSA/ECDSA）
  * 3. Token 刷新与过期策略
