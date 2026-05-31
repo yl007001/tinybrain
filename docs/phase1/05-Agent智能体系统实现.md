@@ -190,3 +190,9 @@ Map<String, List<Map<String, String>>> sessionMemory
 
 ---
 
+## 总结
+
+TinyBrain Agent 采用 Function Calling 模式实现工具调用，通过 AgentEngine 维护工具注册表，SPI 机制支持插件化扩展。当前实现了四级记忆策略（滑动窗口优先），可后续升级为向量记忆。
+
+核心原理：LLM 的"思考→行动→观察"循环（ReAct 模式），通过 System Prompt 精确描述工具用途来控制 Agent 行为。
+
