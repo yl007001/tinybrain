@@ -18,7 +18,7 @@ public class TinyBrainApplication { ... }
 
 ### 1.3 自动配置的实现原理
 
-面试必问：**"Spring Boot 自动配置是怎么实现的？"**
+**"Spring Boot 自动配置是怎么实现的？"**
 
 核心流程：
 
@@ -66,7 +66,7 @@ public class JacksonConfig {
 
 当 Spring 扫描到此配置类，自动注册 ObjectMapper Bean，所有 Controller 返回 JSON 时统一使用此格式。
 
-**面试题：@ConditionalOnMissingBean 的作用？**
+**@ConditionalOnMissingBean 的作用？**
 > 答：当容器中不存在指定 Bean 时，才创建该 Bean。常用于覆盖自动配置——用户自定义 Bean 优先级高于框架默认配置。
 
 ---
@@ -113,7 +113,7 @@ public class BusinessException extends RuntimeException { ... }
 - **事务回滚**：Spring 默认只回滚 RuntimeException，不回滚 Exception
 - **统一处理**：全局异常处理器统一捕获，Controller 层无需 try-catch
 
-**面试题：Spring 事务什么时候回滚？**
+**Spring 事务什么时候回滚？**
 > 答：默认只回滚 RuntimeException 和 Error。如果希望 Checked Exception 也回滚，需设置 `@Transactional(rollbackFor = Exception.class)`。
 
 ---
@@ -154,7 +154,7 @@ Payload: {
 Signature: HMAC-SHA256(base64(Header) + "." + base64(Payload), secret)
 ```
 
-**面试题：JWT 和 Session 的区别？**
+**JWT 和 Session 的区别？**
 > 答：JWT 无状态，服务端不存储会话信息，天然适合分布式/微服务架构。Session 有状态，需要会话同步或 Redis 共享。JWT 的缺点是无法主动失效，需要维护黑名单。
 
 ### 3.3 SecurityFilterChain 配置
@@ -245,11 +245,11 @@ Controller 抛出异常
 
 **本阶段核心技术点总结**：
 
-| 技术 | 深度要求 | 面试常见问题 |
-|------|---------|------------|
-| Spring Boot 自动配置 | 理解 `spring.factories` + `@Conditional` | "自动配置原理"、"如何自定义 Starter" |
-| AOP | 理解 JDK 动态代理 vs CGLIB | "AOP 代理对象调用内部方法失效" |
-| JWT | Token 结构 + 无状态认证 | "JWT 和 Session 区别"、"Token 续期方案" |
-| Spring Security | 过滤器链 + SecurityContext | "SecurityFilterChain 执行顺序" |
-| MyBatis-Plus | 分页插件原理 + Lambda 查询 | "MyBatis 一级二级缓存"、"${} 和 #{} 区别" |
-| 事务管理 | 传播行为 + 隔离级别 | "事务失效场景"、"@Transactional 自调用" |
+| 技术 | 说明 |
+|------|------|
+| Spring Boot 自动配置 | `spring.factories` + `@Conditional` 机制，理解自动配置加载流程 |
+| AOP | JDK 动态代理 vs CGLIB 区别，代理对象内部方法调用的行为 |
+| JWT | Token 结构（Header.Payload.Signature），无状态认证方案 |
+| Spring Security | 过滤器链 SecurityFilterChain，SecurityContext 上下文传递 |
+| MyBatis-Plus | 分页插件拦截器原理，Lambda 查询防止 SQL 注入 |
+| 事务管理 | 事务传播行为（REQUIRED/REQUIRES_NEW/NESTED），隔离级别 |

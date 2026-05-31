@@ -118,7 +118,7 @@ public class KnowledgeSearchTool implements AgentTool {
 }
 ```
 
-**面试重点**：为什么用 JSON Schema？
+**为什么用 JSON Schema？
 > 因为 LLM 原生理解 JSON Schema，可精确生成符合格式的结构化输出。
 
 ### 3.3 Function Calling 循环
@@ -190,34 +190,3 @@ Map<String, List<Map<String, String>>> sessionMemory
 
 ---
 
-## 六、面试题精讲
-
-### 基础题
-
-1. **什么是 AI Agent？和 LLM 有什么区别？**
-   > LLM 只能对话，Agent 能用工具、有记忆、能自主规划执行。
-
-2. **Function Calling 是什么原理？**
-   > LLM 输出结构化 JSON，系统解析后执行对应函数，结果再回填给 LLM。
-
-3. **Agent 的 Tool 是怎么注册的？**
-   > Spring 启动时，AgentToolRegistry 扫描所有 AgentTool 实现，注册到 AgentEngine。
-
-### 进阶题
-
-4. **怎么防止 Agent 陷入无限循环？**
-   > 设置 maxIterations 上限（TinyBrain 默认为 5）。检测连续相同工具调用。
-
-5. **Agent 的 System Prompt 怎么设计？**
-   > 精确描述每个工具的用途和参数。告诉 LLM 何时该用、何时不该用。
-
-6. **多 Agent 协作怎么实现？**
-   > Supervisor + Worker 模式：一个主 Agent 分配任务，多个子 Agent 执行。
-
-### 场景题
-
-7. **"如果 LLM 返回了不存在的工具名怎么办？"**
-   > AgentEngine.executeTool 中 catch 异常，返回友好错误信息告诉 LLM 重试。
-
-8. **"怎么让 Agent 支持更复杂的多步骤任务？"**
-   > ReAct 模式（Reason + Act）：LLM 先思考"需要什么信息"→ 调用工具 → 观察结果 → 再思考 → 再调用。
