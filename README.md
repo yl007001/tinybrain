@@ -182,13 +182,6 @@
 | **VectorStore 增强** | IVF 索引 + `IvfIndex` 类 + `DocumentIndexingService` 异步索引 | 等量功能，架构简化 |
 | **流式响应** | SSE 流式输出（`RAGStreamController`） | 同 v1，流式可选 |
 
-### 💡 面试策略
-
-> **先讲 v1-darkcrafted："我手写了 Function Calling 和 IVF 向量索引，说明我理解底层原理"**
->
-> **再讲 v2-spring-ai-alibaba："我同时也用 Spring AI Alibaba 做企业级集成，说明我有框架思维"**
->
-> **一鱼两吃，底层原理和框架思维都能展示**
 
 ---
 
