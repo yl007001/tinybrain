@@ -1,0 +1,18 @@
+# TinyBrain Render 部署配置 (v2-spring-ai-alibaba)
+# https://render.com 免费层部署
+# 使用 H2 内存数据库，无需 MySQL/Redis/ES
+# 此版本使用 Spring AI Alibaba DashScope
+
+services:
+  - type: web
+    name: tinybrain-v2
+    env: java
+    plan: free
+    buildCommand: mvn clean package -DskipTests -pl tinybrain-app -am
+    startCommand: cd tinybrain-app && java -jar target/*.jar --spring.profiles.active=dev
+    envVars:
+      - key: AI_DASHSCOPE_API_KEY
+        sync: false
+      - key: SPRING_PROFILES_ACTIVE
+        value: dev
+    healthCheckPath: /actuator/health
