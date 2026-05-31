@@ -31,6 +31,18 @@ spring:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
 
+  # Redis 配置（开发环境无 Redis 不影响启动）
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 4
+          min-idle: 0
+
 # MyBatis-Plus 配置
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
@@ -86,6 +98,43 @@ tinybrain:
   llm:
     api-key: ${TINYBRAIN_LLM_KEY:sk-your-api-key-here}
     base-url: https://api.deepseek.com
+    timeout: 30000
+
+  # 向量存储配置
+  vectorstore:
+    data-dir: ${TINYBRAIN_VECTORSTORE_DIR:./data/vectorstore}
+
+  # 搜索引擎配置（可选）
+  search:
+    api-key: ${TINYBRAIN_SEARCH_API_KEY:}
+    api-url: https://serpapi.com
+
+# Resilience4j 容错配置
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-size: 5
+        minimum-number-of-calls: 3
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+    instances:
+      llmApi:
+        base-config: default
+  retry:
+    configs:
+      default:
+        max-attempts: 2
+        wait-duration: 1s
+    instances:
+      llmApi:
+        base-config: default
+  ratelimiter:
+    instances:
+      llmApi:
+        limit-for-period: 20
+        limit-refresh-period: 1m
+        timeout-duration: 3s
 
 # 日志配置
 logging:

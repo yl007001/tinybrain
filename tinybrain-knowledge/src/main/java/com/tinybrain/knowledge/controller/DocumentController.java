@@ -10,8 +10,14 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 /**
  * 文档控制器
@@ -19,7 +25,8 @@ import org.springframework.web.bind.annotation.*;
  * 提供知识库文档的 CRUD 接口。
  * 所有接口需要 JWT 认证（由 Spring Security 控制）。
  */
-@Tag(name = "02-知识库文档", description = "文档的 CRUD、分页查询、管理员接口")
+@Slf4j
+@Tag(name = "02-知识库文档", description = "文档的 CRUD、上传、分页查询")
 @RestController
 @RequestMapping("/api/documents")
 @RequiredArgsConstructor
@@ -73,5 +80,46 @@ public class DocumentController {
     public R<PageResult<DocumentVO>> adminQueryPage(DocumentQueryRequest request) {
         PageResult<DocumentVO> result = documentService.queryPage(request, null);
         return R.ok(result);
+    }
+
+    @Operation(summary = "上传文档文件", description = "上传 Markdown/文本文件作为知识库文档，自动读取文件内容并创建文档记录")
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public R<DocumentVO> uploadFile(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(required = false, defaultValue = "markdown") String contentType,
+            @Parameter(hidden = true) @RequestAttribute(CommonConstant.CURRENT_USER) Long userId) {
+
+        if (file.isEmpty()) {
+            return R.fail(400, "上传文件不能为空");
+        }
+
+        String filename = file.getOriginalFilename();
+        if (filename == null || filename.isBlank()) {
+            filename = "unnamed.txt";
+        }
+
+        // 检查文件大小（最大 10MB）
+        if (file.getSize() > 10 * 1024 * 1024) {
+            return R.fail(400, "文件大小不能超过 10MB");
+        }
+
+        try {
+            String content = new String(file.getBytes(), StandardCharsets.UTF_8);
+
+            DocumentCreateRequest request = new DocumentCreateRequest();
+            // 去掉扩展名作为标题
+            String title = filename.contains(".") ? filename.substring(0, filename.lastIndexOf('.')) : filename;
+            request.setTitle(title);
+            request.setContent(content);
+            request.setContentType(contentType);
+            request.setSummary(content.length() > 200 ? content.substring(0, 200) + "..." : content);
+
+            DocumentVO doc = documentService.create(request, userId);
+            log.info("文档上传成功: filename={}, userId={}, docId={}", filename, userId, doc.getId());
+            return R.ok("上传成功", doc);
+        } catch (IOException e) {
+            log.error("文档上传失败: {}", e.getMessage());
+            return R.fail(500, "文件读取失败: " + e.getMessage());
+        }
     }
 }

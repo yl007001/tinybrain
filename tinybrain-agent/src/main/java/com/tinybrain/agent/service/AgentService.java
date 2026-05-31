@@ -141,27 +141,71 @@ public class AgentService {
     /**
      * 从 LLM 回复中提取工具调用 JSON
      * <p>
-     * 简单实现：检测回复中是否包含 {"tool": ...} 格式的 JSON。
-     * 生产环境建议使用 OpenAI Function Calling 的 structured output。
+     * 支持两种格式：
+     * 1. OpenAI Function Calling 格式：回复中包含工具调用结构
+     * 2. 自定义 JSON 格式：{"tool": "name", "args": {...}}
+     * <p>
+     * 先尝试 Function Calling 格式，再尝试自定义 JSON 格式。
      */
     private String extractToolCall(String reply) {
-        int start = reply.indexOf("{\"tool\"");
-        if (start < 0) start = reply.indexOf("{\"tool\":");
-        if (start < 0) return null;
+        if (reply == null || reply.isBlank()) return null;
 
-        int end = reply.indexOf("}", start) + 1;
-        // 处理嵌套 JSON
+        // 尝试自定义 JSON 格式: {"tool": "...", "args": {...}}
+        int jsonStart = -1;
+
+        // 查找 {"tool" 或 {"tool": 模式
+        int idx1 = reply.indexOf("{\"tool\"");
+        int idx2 = reply.indexOf("{\"tool\":");
+        jsonStart = (idx1 >= 0 && idx2 >= 0) ? Math.min(idx1, idx2) :
+                    (idx1 >= 0 ? idx1 : idx2);
+
+        if (jsonStart < 0) return null;
+
+        // 找到匹配的闭合花括号（处理嵌套 JSON）
         int braceCount = 0;
-        for (int i = start; i < reply.length(); i++) {
-            if (reply.charAt(i) == '{') braceCount++;
-            else if (reply.charAt(i) == '}') braceCount--;
-            if (braceCount == 0) {
-                end = i + 1;
-                break;
+        boolean inString = false;
+        char escapeChar = 0;
+
+        for (int i = jsonStart; i < reply.length(); i++) {
+            char c = reply.charAt(i);
+
+            // 处理字符串转义
+            if (escapeChar != 0) {
+                escapeChar = 0;
+                continue;
+            }
+            if (c == '\\') {
+                escapeChar = c;
+                continue;
+            }
+
+            // 处理字符串边界
+            if (c == '"' && !inString) {
+                inString = true;
+                continue;
+            }
+            if (c == '"' && inString) {
+                inString = false;
+                continue;
+            }
+
+            if (!inString) {
+                if (c == '{') braceCount++;
+                else if (c == '}') braceCount--;
+
+                if (braceCount == 0) {
+                    // 提取完整的 JSON
+                    String json = reply.substring(jsonStart, i + 1);
+                    // 快速验证：必须是有效的工具调用 JSON
+                    if (json.contains("\"tool\"") || json.contains("\"name\"")) {
+                        return json;
+                    }
+                    return null;
+                }
             }
         }
 
-        return reply.substring(start, end);
+        return null;
     }
 
     /**

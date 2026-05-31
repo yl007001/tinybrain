@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TinyBrain RAG 性能压测脚本
+  ===========================
+  使用: jmeter -n -t jmeter-rag.jmx -l results.jtl -e -o report/
+
+  前置条件:
+    1. TinyBrain 已启动 (localhost:8080)
+    2. 知识库中已有索引好的文档
+    3. 已配置 TINYBRAIN_LLM_KEY 环境变量
+
+  测试场景:
+    - 并发用户: 10, 50, 100
+    - 测试接口: /api/rag/ask
+    - 监控指标: QPS, P50/P95/P99 延迟, 错误率
+-->
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.2">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="TinyBrain RAG 压测">
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments">
+        <collectionProp name="Arguments.arguments">
+          <elementProp name="BASE_URL" elementType="Argument">
+            <stringProp name="Argument.name">BASE_URL</stringProp>
+            <stringProp name="Argument.value">http://localhost:8080</stringProp>
+          </elementProp>
+          <elementProp name="TOKEN" elementType="Argument">
+            <stringProp name="Argument.name">TOKEN</stringProp>
+            <stringProp name="Argument.value">YOUR_JWT_TOKEN_HERE</stringProp>
+          </elementProp>
+        </collectionProp>
+      </elementProp>
+      <hashTree>
+        <!-- 线程组: 10 并发用户 -->
+        <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="10 并发用户">
+          <intProp name="ThreadGroup.num_threads">10</intProp>
+          <intProp name="ThreadGroup.ramp_time">5</intProp>
+          <boolProp name="ThreadGroup.same_user_on_next_iteration">false</boolProp>
+          <elementProp name="ThreadGroup.main_controller" elementType="LoopController">
+            <boolProp name="LoopController.continue_forever">false</boolProp>
+            <intProp name="LoopController.loops">50</intProp>
+          </elementProp>
+          <hashTree>
+            <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="RAG 问答请求">
+              <stringProp name="HTTPSampler.domain">localhost</stringProp>
+              <stringProp name="HTTPSampler.port">8080</stringProp>
+              <stringProp name="HTTPSampler.protocol">http</stringProp>
+              <stringProp name="HTTPSampler.path">/api/rag/ask?question=${__RandomString(10,abcdefghijklmnopqrstuvwxyz  ,)}&amp;topK=3</stringProp>
+              <stringProp name="HTTPSampler.method">GET</stringProp>
+              <elementProp name="HeaderManager" elementType="HeaderManager">
+                <collectionProp name="HeaderManager.headers">
+                  <elementProp name="Authorization" elementType="Header">
+                    <stringProp name="Header.name">Authorization</stringProp>
+                    <stringProp name="Header.value">Bearer ${TOKEN}</stringProp>
+                  </elementProp>
+                </collectionProp>
+              </elementProp>
+            </HTTPSamplerProxy>
+            <hashTree/>
+          </hashTree>
+        </ThreadGroup>
+
+        <!-- 线程组: 50 并发用户 -->
+        <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="50 并发用户">
+          <intProp name="ThreadGroup.num_threads">50</intProp>
+          <intProp name="ThreadGroup.ramp_time">10</intProp>
+          <elementProp name="ThreadGroup.main_controller" elementType="LoopController">
+            <boolProp name="LoopController.continue_forever">false</boolProp>
+            <intProp name="LoopController.loops">20</intProp>
+          </elementProp>
+          <hashTree>
+            <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="RAG 问答请求">
+              <stringProp name="HTTPSampler.domain">localhost</stringProp>
+              <stringProp name="HTTPSampler.port">8080</stringProp>
+              <stringProp name="HTTPSampler.protocol">http</stringProp>
+              <stringProp name="HTTPSampler.path">/api/rag/ask?question=${__RandomString(15,abcdefghijklmnopqrstuvwxyz  ,)}&amp;topK=5</stringProp>
+              <stringProp name="HTTPSampler.method">GET</stringProp>
+              <elementProp name="HeaderManager" elementType="HeaderManager">
+                <collectionProp name="HeaderManager.headers">
+                  <elementProp name="Authorization" elementType="Header">
+                    <stringProp name="Header.name">Authorization</stringProp>
+                    <stringProp name="Header.value">Bearer ${TOKEN}</stringProp>
+                  </elementProp>
+                </collectionProp>
+              </elementProp>
+            </HTTPSamplerProxy>
+            <hashTree/>
+          </hashTree>
+        </ThreadGroup>
+      </hashTree>
+    </TestPlan>
+
+    <!-- 结果监听器 -->
+    <hashTree>
+      <ResultCollector guiclass="SummaryReport" testclass="ResultCollector" testname="汇总报告"/>
+      <ResultCollector guiclass="StatVisualizer" testclass="ResultCollector" testname="统计报表"/>
+      <ResultCollector guiclass="GraphAccumListener" testclass="ResultCollector" testname="延迟图表"/>
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>

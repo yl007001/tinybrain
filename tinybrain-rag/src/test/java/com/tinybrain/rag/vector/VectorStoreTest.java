@@ -16,7 +16,7 @@ class VectorStoreTest {
 
     @BeforeEach
     void setUp() {
-        vectorStore = new VectorStore();
+        vectorStore = new VectorStore("./target/test-data/vectorstore");
     }
 
     @Test

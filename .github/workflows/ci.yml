@@ -118,7 +118,41 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ========================
-  # Job 3: 代码质量检查（可选）
+  # Job 3: 前端构建
+  # ========================
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tinybrain-ui
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: tinybrain-ui/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Upload frontend artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: tinybrain-ui/dist/
+          retention-days: 7
+
+  # ========================
+  # Job 4: 代码质量检查
   # ========================
   code-quality:
     name: Code Quality
@@ -137,6 +171,10 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # 运行 Checkstyle（如已配置）
-      # - name: Checkstyle
-      #   run: mvn checkstyle:check
+      - name: Check for TODO/FIXME comments
+        run: |
+          TODOS=$(grep -rn "TODO\|FIXME" --include="*.java" --include="*.ts" --include="*.vue" . || true)
+          if [ -n "$TODOS" ]; then
+            echo "Remaining TODOs:"
+            echo "$TODOS"
+          fi

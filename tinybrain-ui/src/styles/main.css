@@ -1,0 +1,79 @@
+/* ======== TinyBrain Global Styles ======== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, 'Noto Sans SC', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f7fafc;
+  color: #2d3748;
+}
+
+#app {
+  height: 100%;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* Element Plus Overrides */
+.el-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.el-card__header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.el-table th.el-table__cell {
+  font-weight: 600;
+  color: #4a5568;
+  background-color: #f7fafc;
+}
+
+.el-dialog__body {
+  padding: 24px;
+}
+
+.el-button--primary {
+  --el-button-bg-color: #667eea;
+  --el-button-border-color: #667eea;
+  --el-button-hover-bg-color: #5a6fd6;
+  --el-button-hover-border-color: #5a6fd6;
+}
+
+/* Transitions */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}

@@ -153,7 +153,12 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - TINYBRAIN_LLM_KEY=${TINYBRAIN_LLM_KEY:-sk-your-api-key}
+      - TINYBRAIN_JWT_SECRET=${TINYBRAIN_JWT_SECRET:-}
+      - TINYBRAIN_SEARCH_API_KEY=${TINYBRAIN_SEARCH_API_KEY:-}
+      - TINYBRAIN_VECTORSTORE_DIR=/data/vectorstore
       - JAVA_OPTS=-Xms256m -Xmx512m
+    volumes:
+      - app-data:/data
     depends_on:
       mysql:
         condition: service_healthy
@@ -191,6 +196,7 @@ volumes:
   es-data:
   prometheus-data:
   grafana-data:
+  app-data:
 
 # ========================
 # 网络

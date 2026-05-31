@@ -1,204 +1,331 @@
-# TinyBrain — 个人 AI 知识引擎
+<div align="center">
+  <h1>🧠 TinyBrain</h1>
+  <p><strong>Personal AI Knowledge Engine</strong></p>
+  <p>Spring Boot 3.x · RAG · Agent · Microservices · Observability</p>
 
-> 一个 Spring Boot 3.x + Spring Cloud Alibaba 驱动的个人 AI 知识管理平台。
-> 集成 RAG 检索增强生成与自主 Agent 能力。
+  <p>
+    <a href="./LICENSE">
+      <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License" />
+    </a>
+    <img src="https://img.shields.io/badge/Java-17-orange" alt="Java 17" />
+    <img src="https://img.shields.io/badge/Spring%20Boot-3.2.5-brightgreen" alt="Spring Boot 3.2" />
+    <img src="https://img.shields.io/badge/Spring%20Cloud-2023.0.3-blueviolet" alt="Spring Cloud 2023" />
+  </p>
 
-## 📋 项目信息
+  <p>
+    <a href="#introduction">English</a> ·
+    <a href="#项目介绍">中文</a>
+  </p>
 
-| 项目 | 内容 |
-|------|------|
-| **目标** | 构建个人知识库 + AI 问答系统 |
-| **技术栈** | Java 17, Spring Boot 3.2, Spring Cloud 2023, MyBatis-Plus, MySQL, Elasticsearch |
-| **AI** | RAG (检索增强生成), Agent (Function Calling), LLM API (DeepSeek/OpenAI) |
-| **部署** | Docker Compose (MySQL + ES + Prometheus + Grafana + Zipkin) |
-| **仓库** | [Gitee](https://gitee.com/lisusuyeye/personal-ai-knowledge-engine) |
+  <br>
+</div>
 
-## 🏗 系统架构
+---
+
+<a id="introduction"></a>
+## 📖 Introduction
+
+**TinyBrain** is a personal AI knowledge engine built with **Spring Boot 3.x** and **Spring Cloud Alibaba**. It integrates **RAG (Retrieval-Augmented Generation)** search and autonomous **Agent** capabilities, allowing you to build a personalized knowledge base and interact with it through natural language.
+
+### ✨ Key Features
+
+| Feature | Description |
+|---------|-------------|
+| 🔐 **Authentication** | JWT-based auth with Spring Security, RBAC role management |
+| 📚 **Knowledge Base** | Document CRUD with MyBatis-Plus, Markdown/text support, file upload |
+| 🔍 **RAG Search** | Document chunking → vectorization → semantic search → LLM-augmented answering |
+| 🤖 **AI Agent** | Function Calling, tool plugins (calculator, datetime, knowledge search, web search) |
+| 🚪 **API Gateway** | Spring Cloud Gateway, JWT global filter, routing, CORS |
+| 📊 **Observability** | Prometheus + Grafana dashboards, Zipkin distributed tracing, structured JSON logging |
+| 🐳 **Docker** | One-command `docker-compose up` for full stack deployment |
+| 🔄 **CI/CD** | GitHub Actions pipeline with build, test, Docker image |
+| 🛡️ **Resilience** | Circuit breaker, retry, rate limiting (Resilience4j) |
+
+### 🏗 Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ 客户端 (Swagger UI / curl / 前端)                            │
+│  Clients (Swagger UI / Vue Frontend / curl)                 │
 └──────────────────────┬──────────────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────────────┐
-│ API 网关: tinybrain-gateway (Spring Cloud Gateway)           │
-│     JWT 鉴权 · 路由转发 · 限流 · 跨域                        │
+│  API Gateway: Spring Cloud Gateway                          │
+│     JWT Auth · Routing · Rate Limiting · CORS               │
 └──────┬─────────┬─────────┬─────────┬────────────────────────┘
        │         │         │         │
 ┌──────▼──┐ ┌───▼────┐ ┌──▼────┐ ┌─▼────────┐
-│ 用户服务 │ │知识库服务│ │RAG服务│ │Agent服务  │
-│ tinybrain│ │tinybrain│ │tinybrain│ │tinybrain │
-│ -user   │ │-know-  │ │-rag   │ │-agent    │
-│         │ │ledge   │ │       │ │          │
-│ JWT认证 │ │文档CRUD │ │向量化 │ │Function  │
-│ RBAC权限│ │ES全文搜 │ │语义检索│ │Calling   │
-│         │ │索      │ │LLM增强│ │工具插件  │
+│  User   │ │Knowledge│ │ RAG   │ │  Agent   │
+│ Service │ │ Service │ │Service│ │ Service  │
+│         │ │         │ │      │ │          │
+│ JWT Auth│ │Doc CRUD │ │Vector│ │Function  │
+│ RBAC    │ │Upload   │ │Search│ │Calling   │
+│         │ │    │    │ │LLM   │ │Plugins   │
 └──┬──────┘ └──┬─────┘ └──┬────┘ └──┬───────┘
    │           │          │         │
    └───────────┴──────────┴─────────┘
                │
      ┌─────────▼──────────────┐
-     │ 基础模块: tinybrain-common │
-     │ 统一响应 · 异常处理 · 工具类 │
+     │  Common Module          │
+     │  Response · Exception   │
+     │  Config · Utilities     │
      └────────────────────────┘
 ```
 
-## 🔧 技术栈
+### 🛠 Tech Stack
 
-| 领域 | 选型 | 说明 |
-|------|------|------|
-| **框架** | Spring Boot 3.2 | 自动配置、AOP、事件驱动 |
-| **微服务** | Spring Cloud 2023 + Nacos | 服务注册发现、配置中心 |
-| **网关** | Spring Cloud Gateway | 路由转发、JWT 鉴权、限流 |
-| **ORM** | MyBatis-Plus 3.5 | 分页、自动填充、逻辑删除 |
-| **数据库** | MySQL 8 + H2 (dev) | 主业务数据库 |
-| **搜索引擎** | Elasticsearch 7.17 | 全文检索 |
-| **AI API** | DeepSeek / OpenAI 兼容 | Chat + Embedding |
-| **文档** | SpringDoc OpenAPI 2.6 | Swagger UI 自动生成 |
-| **监控** | Micrometer + Prometheus + Grafana | JVM/业务指标大盘 |
-| **追踪** | Micrometer Tracing + Zipkin | 分布式链路追踪 |
-| **日志** | Logback + Logstash Encoder + ELK | 结构化 JSON 日志 |
-| **部署** | Docker Compose | 一键启动所有服务 |
+| Category | Technology |
+|----------|-----------|
+| **Language** | Java 17 (Virtual Threads, Records, Pattern Matching) |
+| **Framework** | Spring Boot 3.2.5, Spring Cloud 2023.0.3, Spring Cloud Alibaba |
+| **ORM** | MyBatis-Plus 3.5.7 |
+| **Database** | MySQL 8 (production), H2 (dev) |
+| **Auth** | JWT (jjwt 0.12.5), Spring Security, BCrypt |
+| **AI** | DeepSeek API / OpenAI API / Ollama (OpenAI-compatible) |
+| **Vector Store** | In-memory + JSON file persistence (pluggable for ChromaDB/Milvus) |
+| **Gateway** | Spring Cloud Gateway (WebFlux, reactive) |
+| **Fault Tolerance** | Resilience4j (Circuit Breaker, Retry, Rate Limiter) |
+| **Observability** | Micrometer + Prometheus + Grafana + Zipkin |
+| **Logging** | Logback + Logstash JSON encoder + MDC traceId |
+| **API Docs** | SpringDoc OpenAPI 2.6 (Swagger UI) |
+| **Frontend** | Vue 3 + TypeScript + Element Plus (optional) |
+| **Container** | Docker, Docker Compose |
+| **CI/CD** | GitHub Actions |
 
-## 🚀 快速开始
+---
 
-### 1. 环境要求
+<a id="project-intro"></a>
+## 📖 项目介绍
+
+**TinyBrain** 是一个基于 **Spring Boot 3.x** + **Spring Cloud Alibaba** 的个人 AI 知识引擎，集成了 **RAG 检索增强生成**和 **Agent 智能体**能力。
+
+### ✨ 功能特性
+
+- 🔐 **JWT 认证** — Spring Security + RBAC 权限管理
+- 📚 **知识库管理** — 文档 CRUD、Markdown/文本支持、文件上传
+- 🔍 **RAG 智能问答** — 文档分块 → 向量化 → 语义检索 → LLM 增强回答
+- 🤖 **AI Agent** — Function Calling 工具调用（计算器、时间日期、知识搜索、网络搜索）
+- 🚪 **API 网关** — Spring Cloud Gateway、JWT 全局鉴权、路由转发、CORS
+- 📊 **可观测性** — Prometheus + Grafana 大盘、Zipkin 链路追踪、JSON 结构化日志
+- 🐳 **Docker 部署** — `docker-compose up` 一键启动全套服务
+- 🔄 **CI/CD** — GitHub Actions 流水线（构建、测试、Docker 镜像）
+- 🛡️ **容错保护** — Resilience4j 熔断、重试、限流
+- 🧪 **Ollama 支持** — 可接入本地大模型，无需 API Key
+
+### 🏗 系统架构
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  客户端 (Swagger UI / Vue 前端 / curl)                       │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────────┐
+│  API 网关: Spring Cloud Gateway                              │
+│     JWT 鉴权 · 路由转发 · 限流 · CORS                        │
+└──────┬─────────┬─────────┬─────────┬────────────────────────┘
+       │         │         │         │
+┌──────▼──┐ ┌───▼────┐ ┌──▼────┐ ┌─▼────────┐
+│ 用户模块 │ │知识库模块│ │RAG模块│ │Agent模块  │
+│ JWT认证  │ │文档CRUD │ │向量化 │ │Function  │
+│ RBAC权限 │ │文件上传 │ │语义检索│ │Calling   │
+│         │ │        │ │LLM增强│ │工具插件  │
+└──┬──────┘ └──┬─────┘ └──┬────┘ └──┬───────┘
+   │           │          │         │
+   └───────────┴──────────┴─────────┘
+               │
+     ┌─────────▼──────────────┐
+     │  基础模块: tinybrain-common │
+     │  统一响应 · 异常处理 · 工具类 │
+     └────────────────────────┘
+```
+
+### 🛠 技术栈
+
+| 领域 | 技术 |
+|------|------|
+| **语言** | Java 17 |
+| **框架** | Spring Boot 3.2.5, Spring Cloud 2023.0.3, Spring Cloud Alibaba |
+| **ORM** | MyBatis-Plus 3.5.7 |
+| **数据库** | MySQL 8 (生产), H2 (开发) |
+| **认证** | JWT (jjwt 0.12.5), Spring Security, BCrypt |
+| **AI** | DeepSeek / OpenAI / Ollama 兼容 API |
+| **向量存储** | 内存 + JSON 文件持久化（可替换为 ChromaDB/Milvus） |
+| **网关** | Spring Cloud Gateway (WebFlux) |
+| **容错** | Resilience4j (熔断、重试、限流) |
+| **可观测** | Micrometer + Prometheus + Grafana + Zipkin |
+| **日志** | Logback + Logstash JSON + MDC traceId |
+| **前端** | Vue 3 + TypeScript + Element Plus |
+| **部署** | Docker Compose |
+| **CI/CD** | GitHub Actions |
+
+---
+
+## 🚀 Quick Start / 快速开始
+
+### Prerequisites / 前提条件
 
 - JDK 17+
 - Maven 3.9+
-- MySQL 8.0+（开发环境可用 H2 内存库替代）
-- Elasticsearch 7.x（可选，不影响核心功能）
+- Docker & Docker Compose (for containerized deployment)
+- LLM API Key (DeepSeek / OpenAI, or Ollama for local)
 
-### 2. 开发环境启动
+### Development Mode / 开发模式
 
 ```bash
-# 编译
+# 1. Clone
+git clone https://github.com/yourusername/tinybrain.git
+cd tinybrain
+
+# 2. Build
 mvn clean install -DskipTests
 
-# 启动（默认使用 H2 内存数据库，无需安装 MySQL）
+# 3. Set LLM API Key
+export TINYBRAIN_LLM_KEY=sk-your-api-key-here
+
+# 4. Start backend (H2 in-memory database, no MySQL needed)
 cd tinybrain-app
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
+
+# 5. Start frontend (optional)
+cd ../tinybrain-ui
+npm install
+npm run dev
 ```
 
-### 3. Docker 环境启动
+### Docker Deployment / Docker 部署
 
 ```bash
-# 一键启动所有服务（MySQL + ES + Redis + Prometheus + Grafana + Zipkin + App + Gateway）
+# Start all services (MySQL + ES + Redis + Prometheus + Grafana + Zipkin + App)
 docker-compose up -d
 
-# 查看日志
-docker-compose logs -f tinybrain-app
-
-# 停止
-docker-compose down -v
-```
-
-### 4. 访问地址
-
-| 服务 | 地址 |
-|------|------|
-| API 文档 (Swagger UI) | http://localhost:8080/swagger-ui.html |
-| API 网关 | http://localhost:8088 |
-| Prometheus | http://localhost:9090 |
-| Grafana (admin/admin) | http://localhost:3000 |
-| Zipkin | http://localhost:9411 |
-
-### 5. 配置 LLM API
-
-```bash
-# 设置环境变量（DeepSeek / OpenAI 等兼容 API）
+# Set LLM API Key
 export TINYBRAIN_LLM_KEY=sk-your-api-key-here
+docker-compose up -d
 ```
 
-或在 `application.yml` 中修改：
-
-```yaml
-tinybrain:
-  llm:
-    api-key: ${TINYBRAIN_LLM_KEY:sk-your-api-key}
-    base-url: https://api.deepseek.com
-```
-
-## 📚 API 概览
-
-| 模块 | 路径 | 说明 |
-|------|------|------|
-| 用户认证 | `POST /api/auth/register` | 注册 |
-| 用户认证 | `POST /api/auth/login` | 登录（返回 JWT） |
-| 用户认证 | `GET /api/auth/me` | 当前用户信息 |
-| 知识库 | `POST /api/documents` | 创建文档 |
-| 知识库 | `GET /api/documents` | 分页查询 |
-| 知识库 | `GET /api/documents/{id}` | 文档详情 |
-| RAG | `GET /api/rag/ask` | RAG 智能问答 |
-| RAG | `POST /api/rag/index/{id}` | 索引文档 |
-| Agent | `POST /api/agent/chat` | Agent 对话 |
-| Agent | `GET /api/agent/tools` | 工具列表 |
-
-完整 API 文档：启动后访问 [Swagger UI](http://localhost:8080/swagger-ui.html)
-
-## 📊 监控与可观测
-
-### 指标采集
-- **JVM 指标**: 内存、GC、线程、类加载
-- **业务指标**: RAG 问答耗时、文档索引次数、Agent 对话数
-- **HTTP 指标**: 请求量、延迟、错误率
-- **自定义指标**: Micrometer @Timed 注解
-
-### 链路追踪
-- 基于 Micrometer Tracing + Brave (Zipkin)
-- 自动注入 traceId 到 MDC，关联日志
-- 跨服务传递 W3C traceparent 头
-
-### 日志
-- 开发环境: 控制台彩色输出
-- Docker: JSON 格式到控制台
-- 生产环境: JSON 文件 + ELK 采集
-
-## 🧪 测试
+### Ollama Local Mode / 本地模型模式
 
 ```bash
-# 运行单元测试
-mvn test
+# Install Ollama: https://ollama.ai
+ollama pull qwen2.5:7b
+ollama pull nomic-embed-text
 
-# 运行指定模块测试
-mvn test -pl tinybrain-common,tinybrain-rag,tinybrain-agent
+# Start TinyBrain with Ollama profile
+export SPRING_PROFILES_ACTIVE=ollama
+mvn spring-boot:run
 ```
 
-## 📐 项目结构
+### Access / 访问地址
+
+| Service | URL |
+|---------|-----|
+| API Docs (Swagger) | http://localhost:8080/swagger-ui.html |
+| Vue Frontend | http://localhost:3000 |
+| Prometheus | http://localhost:9090 |
+| Grafana | http://localhost:3000 (admin/admin) |
+| Zipkin | http://localhost:9411 |
+| MySQL | localhost:3306 |
+
+---
+
+## 📚 API Overview / API 概览
+
+| Module | Method | Path | Description |
+|--------|--------|------|-------------|
+| Auth | POST | `/api/auth/register` | Register |
+| Auth | POST | `/api/auth/login` | Login → JWT Token |
+| Auth | GET | `/api/auth/me` | Current user info |
+| Documents | POST | `/api/documents` | Create document |
+| Documents | POST | `/api/documents/upload` | Upload file |
+| Documents | GET | `/api/documents` | List documents |
+| Documents | GET | `/api/documents/{id}` | Get detail |
+| RAG | POST | `/api/rag/index/{id}` | Index document → vector |
+| RAG | GET | `/api/rag/ask` | RAG question answering |
+| Agent | POST | `/api/agent/chat` | Agent conversation |
+| Agent | GET | `/api/agent/tools` | List available tools |
+
+---
+
+## 📁 Project Structure / 项目结构
 
 ```
 tinybrain/
-├── tinybrain-app          # 启动入口 (单体模式)
-├── tinybrain-gateway      # API 网关
-├── tinybrain-common       # 公共模块 (工具类、配置、异常)
-├── tinybrain-user         # 用户模块 (认证、权限)
-├── tinybrain-knowledge    # 知识库模块 (文档 CRUD、全文检索)
-├── tinybrain-rag          # RAG 模块 (向量化、语义检索、LLM生成)
-├── tinybrain-agent        # Agent 模块 (Function Calling、工具插件)
-├── docker-compose.yml     # Docker Compose 部署
-├── Dockerfile             # App Docker 镜像
-└── deploy/                # 部署配置 (Prometheus、Grafana)
+├── tinybrain-app          # Bootable entry point (Spring Boot)
+├── tinybrain-gateway      # API Gateway (Spring Cloud Gateway)
+├── tinybrain-common       # Common module (config, exception, utilities)
+├── tinybrain-user         # User module (auth, JWT, RBAC)
+├── tinybrain-knowledge    # Knowledge base (document CRUD)
+├── tinybrain-rag          # RAG module (vectorization, semantic search, LLM)
+├── tinybrain-agent        # Agent module (Function Calling, tool plugins)
+├── tinybrain-ui           # Vue 3 frontend (optional)
+├── docs/                  # Educational documentation
+├── deploy/                # Deployment configs (Prometheus, Grafana)
+├── docker-compose.yml     # Docker Compose deployment
+├── Dockerfile             # Multi-stage Docker build
+└── .github/workflows/     # CI/CD pipeline
 ```
 
-## 📈 开发路线
+---
 
-- ✅ Phase 1: Spring Boot 核心框架 + 统一响应 + JWT 认证
-- ✅ Phase 2: RAG 检索系统（文档分块、向量检索、LLM 增强生成）
-- ✅ Phase 3: Agent 智能体系统（Function Calling、工具插件）
-- ✅ Phase 4: 微服务化（Gateway、Nacos 服务发现）
-- ✅ Phase 5: 可观测与工程化（日志、监控、追踪、Docker、CI/CD）
-- ✅ Phase 6: 面试特训
+## 📊 Observability / 可观测性
 
-## 📝 面试亮点
+The project includes full observability stack:
 
-详见 `docs/` 目录：
+### Metrics
+- **JVM**: Memory, GC, threads, class loading
+- **Business**: RAG latency, document index count, Agent conversation count
+- **HTTP**: Request rate, latency, error rate
+- **Custom**: Micrometer @Timed annotations
 
-- [自动配置与 AOP](./docs/phase1/01-Spring-Boot-自动配置与AOP实战.md)
-- [MySQL 索引与事务](./docs/phase1/02-MySQL-索引优化与事务原理.md)
-- [面试高频题](./docs/phase1/03-面试高频题精讲.md)
-- [RAG 系统实现](./docs/phase1/04-RAG检索系统实现.md)
-- [Agent 系统实现](./docs/phase1/05-Agent智能体系统实现.md)
-- [微服务与 Spring Cloud](./docs/phase1/06-微服务化与SpringCloud.md)
-- [项目亮点与简历包装](./docs/phase6/01-项目亮点与简历包装.md)
-- [模拟面试题精讲](./docs/phase6/02-模拟面试题精讲.md)
-- [源码深挖与高频考点](./docs/phase6/03-源码深挖与高频考点.md)
+### Tracing
+- Micrometer Tracing + Brave (Zipkin)
+- Auto-inject traceId to MDC for log correlation
+- W3C traceparent header propagation
+
+### Logging
+- Dev: Colorful console output
+- Docker: JSON format
+- Production: JSON file + log rotation
+
+---
+
+## 🧪 Testing / 测试
+
+```bash
+# Run unit tests
+mvn test
+
+# Run specific module
+mvn test -pl tinybrain-rag -am
+```
+
+---
+
+## 🤝 Contributing / 贡献
+
+Please read [CONTRIBUTING.md](./CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md).
+
+---
+
+## 📄 License / 许可证
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](./LICENSE) file for details.
+
+---
+
+## 📈 Project Goals / 项目目标
+
+TinyBrain is designed as a **comprehensive portfolio project** for Java backend developers, covering:
+
+- Java 17 features (Records, Pattern Matching, Virtual Threads, Sealed Classes)
+- Spring Boot 3.x auto-configuration, AOP, event-driven architecture
+- MyBatis-Plus ORM, pagination, auto-fill, logical delete
+- JWT authentication, Spring Security, RBAC
+- RAG: Document chunking, vector embedding, semantic search, LLM prompting
+- Agent: Function Calling architecture, tool plugin system, multi-turn conversation
+- Spring Cloud Gateway, Nacos service discovery
+- Observability: Prometheus, Grafana, Zipkin, structured logging
+- Containerization: Docker, multi-stage builds, health checks
+- CI/CD: GitHub Actions
+- Fault tolerance: Resilience4j circuit breaker, retry, rate limiting
+
+> 💡 Educational documentation is available in the `docs/` directory!

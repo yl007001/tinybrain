@@ -13,7 +13,10 @@ import org.springframework.test.context.TestPropertySource;
 @SpringBootTest
 @ActiveProfiles("dev")
 @TestPropertySource(properties = {
-        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchRestClientAutoConfiguration",
+        "spring.autoconfigure.exclude=" +
+                "org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchRestClientAutoConfiguration," +
+                "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration," +
+                "org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
         "tinybrain.llm.api-key=test-key"
 })
 class TinyBrainApplicationTest {

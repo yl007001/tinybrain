@@ -1,0 +1,24 @@
+# =============================================================================
+# TinyBrain — Ollama 本地模型配置
+# =============================================================================
+# 激活方式: --spring.profiles.active=ollama
+# 前提: 本地已安装 Ollama 并拉取模型（如 qwen2.5, deepseek-r1 等）
+#
+# Ollama 安装: https://ollama.ai
+# 拉取模型: ollama pull qwen2.5:7b
+# 启动 Ollama: ollama serve
+# Ollama 默认 API: http://localhost:11434 (OpenAI 兼容模式)
+#
+# 注意: Ollama 的 Embedding 模型需单独拉取:
+#   ollama pull nomic-embed-text    # 文本向量化
+# =============================================================================
+
+tinybrain:
+  llm:
+    # Ollama 默认地址，无需 API Key
+    api-key: ollama
+    base-url: http://localhost:11434
+    timeout: 60000  # 本地模型可能较慢
+
+  vectorstore:
+    data-dir: ./data/vectorstore
