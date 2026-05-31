@@ -70,7 +70,7 @@ spring:
             - StripPrefix=0                  # 不截断路径
 ```
 
-**面试题：Gateway 和 Zuul 的区别？**
+**Gateway 和 Zuul 的区别？**
 > Gateway 基于 WebFlux（响应式），性能更高；Zuul 1.x 基于 Servlet，已进入维护期。
 
 ---
@@ -172,24 +172,6 @@ public interface DocumentTccService {
 }
 ```
 
-**面试题：TCC vs 2PC 的区别？**
+**TCC vs 2PC 的区别？**
 > 2PC（两阶段提交）是数据库层面的 XA 协议，强一致但性能差。TCC 是业务层面的补偿机制，性能好但需要业务代码配合。
 
----
-
-## 六、面试题精讲
-
-### 基础题
-1. **微服务和单体相比的优缺点？**
-2. **Nacos 和 Eureka 的区别？**
-3. **Gateway 的核心组件有哪些？**
-
-### 进阶题
-4. **服务雪崩怎么处理？**
-   > 熔断（Sentinel）+ 限流 + 隔离 + 降级
-
-5. **分布式事务的解决方案对比？**
-   > 2PC（强一致） vs TCC（最终一致） vs MQ（异步确保） vs Saga（长事务）
-
-6. **怎么做灰度发布？**
-   > Gateway 路由规则 + Nacos 元数据 + 权重路由

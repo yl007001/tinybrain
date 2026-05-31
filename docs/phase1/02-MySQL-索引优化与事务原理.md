@@ -4,7 +4,7 @@
 
 ### 1.1 B+ Tree 索引结构
 
-**面试必问：InnoDB 为什么用 B+ Tree 而不用 B-Tree 或红黑树？**
+**InnoDB 用 B+ Tree 而非 B-Tree 或红黑树，原因如下：**
 
 B+ Tree 的核心优势：
 
@@ -41,7 +41,7 @@ CREATE INDEX idx_status ON kb_document(status);
 
 ### 1.3 最左前缀原则
 
-**面试题：复合索引 (a, b, c) 哪些查询走索引？**
+**复合索引 (a, b, c) 哪些查询走索引？**
 
 ```sql
 WHERE a = 1             → ✅ 走索引（匹配第一列）
@@ -93,7 +93,7 @@ public DocumentVO create(DocumentCreateRequest request, Long userId) {
 
 ### 2.3 MVCC 原理
 
-**面试必问：MVCC 如何实现可重复读？**
+**MVCC 如何实现可重复读？**
 
 核心组件：
 1. **隐藏字段**：DB_TRX_ID（最后修改事务ID）、DB_ROLL_PTR（回滚指针）
@@ -188,32 +188,3 @@ TinyBrain（6 核 CPU）：`6 × 2 + 1 = 13`，配置 20 留有余量。
 4. 避免 SELECT * → 只查需要的列
 5. 分页优化：大偏移量用子查询或游标分页
 
----
-
-## 五、面试高频题
-
-### 基础题
-1. InnoDB 和 MyISAM 的区别？
-2. 聚簇索引和非聚簇索引的区别？
-3. 覆盖索引是什么？如何实现？
-4. 索引下推（ICP）优化是什么？
-
-### 进阶题
-1. MVCC 实现原理（详细讲 undo log + read view）
-2. Next-Key Lock 是什么？解决了什么问题？
-3. 事务隔离级别如何影响数据库并发性能？
-4. 大表分页怎么优化？（特别是 LIMIT 100000, 10）
-
-### 场景题
-1. **"你的项目 QPS 突然涨了 100 倍，数据库扛不住怎么办？"**
-   - 先看慢查询，优化索引
-   - 加 Redis 缓存热点数据
-   - 读写分离（主从复制）
-   - 分库分表（ShardingSphere）
-   - 如果还是扛不住 → 上消息队列削峰
-
-2. **"数据库死锁了怎么排查？"**
-   - `SHOW ENGINE INNODB STATUS` 查看最近死锁
-   - 分析事务 SQL，检查锁竞争
-   - 优化索引减少锁范围
-   - 调整事务顺序，避免交叉加锁

@@ -229,12 +229,9 @@ tinybrain/
 
 详见 `docs/` 目录：
 
-- [自动配置与 AOP](./docs/phase1/01-Spring-Boot-自动配置与AOP实战.md)
-- [MySQL 索引与事务](./docs/phase1/02-MySQL-索引优化与事务原理.md)
-- [面试高频题](./docs/phase1/03-面试高频题精讲.md)
-- [RAG 系统实现](./docs/phase1/04-RAG检索系统实现.md)
-- [Agent 系统实现](./docs/phase1/05-Agent智能体系统实现.md)
-- [微服务与 Spring Cloud](./docs/phase1/06-微服务化与SpringCloud.md)
-- [项目亮点与简历包装](./docs/phase6/01-项目亮点与简历包装.md)
-- [模拟面试题精讲](./docs/phase6/02-模拟面试题精讲.md)
-- [源码深挖与高频考点](./docs/phase6/03-源码深挖与高频考点.md)
+- [Spring Boot 自动配置与 AOP](./docs/phase1/01-Spring-Boot-自动配置与AOP实战.md)
+- [MySQL 索引优化与事务原理](./docs/phase1/02-MySQL-索引优化与事务原理.md)
+- [RAG 检索系统实现](./docs/phase1/04-RAG检索系统实现.md)
+- [Agent 智能体系统实现](./docs/phase1/05-Agent智能体系统实现.md)
+- [微服务化与 Spring Cloud](./docs/phase1/06-微服务化与SpringCloud.md)
+- [可观测与工程化实战](./docs/phase5/01-可观测与工程化实战.md)
