@@ -1,7 +1,16 @@
-# TinyBrain — 个人 AI 知识引擎
+# 🧠 TinyBrain — 个人 AI 知识引擎
 
 > 一个 Spring Boot 3.x + Spring Cloud Alibaba 驱动的个人 AI 知识管理平台。
 > 集成 RAG 检索增强生成与自主 Agent 能力。
+
+<div align="center">
+
+| `v1-handcrafted` | `v2-spring-ai-alibaba` ← **当前分支** |
+|:---:|:---:|
+| 🖐️ 手写 AI 层 | 🏗️ Spring AI Alibaba 框架集成 |
+| [查看分支](https://gitee.com/lisusuyeye/personal-ai-knowledge-engine/tree/v1-handcrafted/) | 你在这里 |
+
+</div>
 
 ## 📋 项目信息
 
@@ -9,9 +18,24 @@
 |------|------|
 | **目标** | 构建个人知识库 + AI 问答系统 |
 | **技术栈** | Java 17, Spring Boot 3.2, Spring Cloud 2023, MyBatis-Plus, MySQL, Elasticsearch |
-| **AI** | RAG (检索增强生成), Agent (Function Calling), LLM API (DeepSeek/OpenAI) |
+| **AI** | RAG + Agent + Spring AI Alibaba (DashScope 通义千问) |
 | **部署** | Docker Compose (MySQL + ES + Prometheus + Grafana + Zipkin) |
 | **仓库** | [Gitee](https://gitee.com/lisusuyeye/personal-ai-knowledge-engine) |
+
+## 🔀 双版本策略
+
+本项目维护两个并行分支，展示同一业务框架下的两种 AI 集成方式：
+
+| | v1-handcrafted 🖐️ | v2-spring-ai-alibaba 🏗️ ← **当前** |
+|---|---|---|
+| **AI 层实现** | 手写 WebClient 直调 LLM API | Spring AI Alibaba 框架 (ChatClient / EmbeddingModel) |
+| **向量检索** | 手写 IVF 倒排索引 + 余弦相似度 | VectorStoreWrapper（预留 Spring AI VectorStore 升级） |
+| **Function Calling** | 手写 JSON Schema + AgentEngine 调度引擎 | `@Tool` 注解 + ChatClient 自动调度 |
+| **重试/熔断** | Resilience4j 手配 | Spring AI 自动重试 |
+| **供应商** | DeepSeek / OpenAI / Ollama | DashScope (通义千问) — 可扩展 |
+| **适用场景** | 面试展示"我懂底层原理" | 面试展示"我有框架思维" |
+
+> 💡 **面试价值**：两个版本可以串讲——"先手写理解原理，再用框架提升生产力，展示完整的技术判断力"
 
 ## 🏗 系统架构
 
@@ -53,7 +77,7 @@
 | **ORM** | MyBatis-Plus 3.5 | 分页、自动填充、逻辑删除 |
 | **数据库** | MySQL 8 + H2 (dev) | 主业务数据库 |
 | **搜索引擎** | Elasticsearch 7.17 | 全文检索 |
-| **AI API** | DeepSeek / OpenAI 兼容 | Chat + Embedding |
+| **AI API** | Spring AI Alibaba (DashScope 通义千问) | ChatClient + EmbeddingModel 统一抽象 |
 | **文档** | SpringDoc OpenAPI 2.6 | Swagger UI 自动生成 |
 | **监控** | Micrometer + Prometheus + Grafana | JVM/业务指标大盘 |
 | **追踪** | Micrometer Tracing + Zipkin | 分布式链路追踪 |
@@ -105,19 +129,33 @@ docker-compose down -v
 
 ### 5. 配置 LLM API
 
+**v2-spring-ai-alibaba（当前分支）** 使用 Spring AI Alibaba DashScope：
+
 ```bash
-# 设置环境变量（DeepSeek / OpenAI 等兼容 API）
-export TINYBRAIN_LLM_KEY=sk-your-api-key-here
+# 设置 DashScope API Key（阿里云通义千问）
+export AI_DASHSCOPE_API_KEY=your-dashscope-api-key
 ```
 
 或在 `application.yml` 中修改：
 
 ```yaml
-tinybrain:
-  llm:
-    api-key: ${TINYBRAIN_LLM_KEY:sk-your-api-key}
-    base-url: https://api.deepseek.com
+spring:
+  ai:
+    dashscope:
+      api-key: ${AI_DASHSCOPE_API_KEY:sk-your-api-key}
+      chat:
+        options:
+          model: qwen-plus
+      embedding:
+        options:
+          model: text-embedding-v2
 ```
+
+> **切换到 v1-handcrafted 分支**时，配置方式不同：
+> ```bash
+> export TINYBRAIN_LLM_KEY=sk-your-api-key
+> ```
+> 详见 v1-handcrafted 分支的 README。
 
 ## 📚 API 概览
 
@@ -188,6 +226,7 @@ tinybrain/
 - ✅ Phase 4: 微服务化（Gateway、Nacos 服务发现）
 - ✅ Phase 5: 可观测与工程化（日志、监控、追踪、Docker、CI/CD）
 - ✅ Phase 6: 面试特训
+- ✅ **双版本拆分**: v1-handcrafted (手写 AI) + v2-spring-ai-alibaba (Spring AI Alibaba)
 
 ## 📝 面试亮点
 
