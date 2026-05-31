@@ -27,6 +27,15 @@
 
 **TinyBrain** is a personal AI knowledge engine built with **Spring Boot 3.x** and **Spring Cloud Alibaba**. It integrates **RAG (Retrieval-Augmented Generation)** search and autonomous **Agent** capabilities, allowing you to build a personalized knowledge base and interact with it through natural language.
 
+<div align="center">
+
+| `v1-handcrafted` 🖐️ ← **当前分支** | `v2-spring-ai-alibaba` 🏗️ |
+|:---:|:---:|
+| 手写 AI 层（WebClient + IVF + 自定义 Agent 引擎） | Spring AI Alibaba 框架集成 |
+| [GitHub](https://github.com/lisusuyeye/tinybrain/tree/v1-handcrafted) | [GitHub](https://github.com/lisusuyeye/tinybrain/tree/v2-spring-ai-alibaba) |
+
+</div>
+
 ### ✨ Key Features
 
 | Feature | Description |
@@ -34,7 +43,7 @@
 | 🔐 **Authentication** | JWT-based auth with Spring Security, RBAC role management |
 | 📚 **Knowledge Base** | Document CRUD with MyBatis-Plus, Markdown/text support, file upload |
 | 🔍 **RAG Search** | Document chunking → vectorization → semantic search → LLM-augmented answering |
-| 🤖 **AI Agent** | Function Calling, tool plugins (calculator, datetime, knowledge search, web search) |
+| 🤖 **AI Agent** | Function Calling (手写 AgentEngine + JSON Schema 解析), tool plugins (calculator, datetime, knowledge search, web search) |
 | 🚪 **API Gateway** | Spring Cloud Gateway, JWT global filter, routing, CORS |
 | 📊 **Observability** | Prometheus + Grafana dashboards, Zipkin distributed tracing, structured JSON logging |
 | 🐳 **Docker** | One-command `docker-compose up` for full stack deployment |
@@ -156,6 +165,30 @@
 | **前端** | Vue 3 + TypeScript + Element Plus |
 | **部署** | Docker Compose |
 | **CI/CD** | GitHub Actions |
+
+---
+
+## 🔀 双版本策略
+
+本项目维护**两个并行分支**，展示同一业务框架下两种 AI 集成方式：
+
+| | v1-handcrafted 🖐️ ← **当前** | v2-spring-ai-alibaba 🏗️ |
+|---|---|---|
+| **AI 层实现** | 手写 WebClient → LLM API（深度理解 HTTP 通信细节） | Spring AI Alibaba (ChatClient + EmbeddingModel) |
+| **向量检索** | 手写 IVF 倒排索引（K-means 聚类 + 多桶探测 + 暴力搜索融合） | VectorStoreWrapper（预留 Spring AI VectorStore 升级） |
+| **Function Calling** | 手写 JSON Schema + AgentEngine 循环 + 嵌套 JSON 解析 | `@Tool` 注解 + ChatClient 自动调度 |
+| **重试/熔断** | Resilience4j 熔断 + 重试 + 限流（手配阈值参数） | Spring AI 自动重试 |
+| **LLM 供应商** | DeepSeek / OpenAI / Ollama（OpenAI 兼容 API） | DashScope（阿里通义千问） |
+| **VectorStore 增强** | IVF 索引 + `IvfIndex` 类 + `DocumentIndexingService` 异步索引 | 等量功能，架构简化 |
+| **流式响应** | SSE 流式输出（`RAGStreamController`） | 同 v1，流式可选 |
+
+### 💡 面试策略
+
+> **先讲 v1-darkcrafted："我手写了 Function Calling 和 IVF 向量索引，说明我理解底层原理"**
+>
+> **再讲 v2-spring-ai-alibaba："我同时也用 Spring AI Alibaba 做企业级集成，说明我有框架思维"**
+>
+> **一鱼两吃，底层原理和框架思维都能展示**
 
 ---
 
