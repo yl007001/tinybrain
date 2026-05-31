@@ -59,8 +59,7 @@ tinybrain/                          # ← 这是项目根目录
 │
 ├── TinyBrain-从零开始使用手册.md      # ◀ 就是你现在看的这个
 │
-├── docs/                           # 纯技术文档
-└── E:/1/面试专题/                   # 面试备战资料（项目外）
+└── docs/                           # 纯技术文档
 ```
 
 ---
@@ -142,7 +141,7 @@ mvn -version
 
 ```bash
 # 进入项目根目录
-cd E:\1\tinybrain
+cd tinybrain
 
 # 编译（第一次会下载几十个依赖包，可能需要 3-5 分钟）
 # 如果失败，可能是网络问题，多试几次
@@ -188,7 +187,7 @@ Started TinyBrainApplication in 15.789 seconds
 如果需要图形界面，新开一个终端：
 
 ```bash
-cd tinybrain/tinybrain-ui
+cd tinybrain-ui
 npm install
 npm run dev
 ```
@@ -394,4 +393,4 @@ Spring Boot 的配置分组。不同的 profile 用不同的配置：
 
 ---
 
-*有任何不明白的，直接问。这项目里的每个文件、每行代码我都可以给你解释。*
+*遇到问题请参考 [docs/](./docs/) 目录下的技术文档，或提交 GitHub Issue。*
