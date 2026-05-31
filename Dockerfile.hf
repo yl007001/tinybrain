@@ -1,0 +1,8 @@
+# Koyeb / Hugging Face Spaces 用这个 Dockerfile
+# 构建后直接运行，自带 Maven
+FROM maven:3.9-eclipse-temurin-17
+WORKDIR /app
+COPY . .
+RUN mvn clean package -DskipTests -q -pl tinybrain-app -am
+EXPOSE 8080
+CMD cd tinybrain-app && java -Xmx512m -jar target/*.jar --spring.profiles.active=dev
