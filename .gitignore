@@ -28,3 +28,6 @@ tmp/
 application-local.yml
 application-prod.yml
 *.local.*
+.env
+.env.*
+data/
