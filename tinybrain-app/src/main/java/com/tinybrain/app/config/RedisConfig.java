@@ -69,6 +69,8 @@ public class RedisConfig {
                         .entryTtl(Duration.ofMinutes(5)))
                 .withCacheConfiguration("documents", RedisCacheConfiguration.defaultCacheConfig()
                         .entryTtl(Duration.ofMinutes(5)))
+                .withCacheConfiguration("users", RedisCacheConfiguration.defaultCacheConfig()
+                        .entryTtl(Duration.ofMinutes(10)))
                 .build();
     }
 }

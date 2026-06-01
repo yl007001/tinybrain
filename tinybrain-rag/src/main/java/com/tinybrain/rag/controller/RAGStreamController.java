@@ -1,10 +1,10 @@
 package com.tinybrain.rag.controller;
 
-import com.tinybrain.common.constant.CommonConstant;
 import com.tinybrain.rag.dto.RAGResult;
 import com.tinybrain.rag.service.RAGService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -57,6 +56,12 @@ public class RAGStreamController {
         t.setDaemon(true);
         return t;
     });
+
+    @PreDestroy
+    public void destroy() {
+        sseExecutor.shutdown();
+        log.info("SSE 线程池已关闭");
+    }
 
     @Operation(summary = "流式 RAG 问答 (SSE)", description = "基于 SSE 的流式 RAG 问答，实时推送处理进度和结果")
     @GetMapping(value = "/ask/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)

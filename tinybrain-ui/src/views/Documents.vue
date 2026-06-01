@@ -1,139 +1,158 @@
 <template>
   <div class="documents-page">
+    <!-- Header -->
     <div class="page-header">
-      <div>
-        <h2 class="page-title">知识库</h2>
-        <p class="page-desc">管理您的知识文档，支持 Markdown 和纯文本</p>
-      </div>
-      <div class="page-actions">
-        <el-upload
-          :show-file-list="false"
-          :before-upload="handleUpload"
-          accept=".md,.txt,.markdown"
-        >
-          <el-button type="primary" :icon="UploadFilled" :loading="uploading">
-            {{ uploading ? '上传中...' : '上传文件' }}
-          </el-button>
-        </el-upload>
-        <el-button :icon="Plus" @click="showCreateDialog = true">新建文档</el-button>
+      <div class="header-actions">
+        <div class="search-box">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <input
+            v-model="query.keyword"
+            placeholder="搜索文档..."
+            @keyup.enter="fetchDocuments"
+            @clear="fetchDocuments"
+          />
+        </div>
+        <button class="btn-secondary" @click="showCreateDialog = true">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          新建
+        </button>
+        <label class="btn-secondary upload-btn">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M8 10V3M8 3L5 6M8 3l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M2 10v3h12v-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          上传
+          <input type="file" accept=".md,.txt,.markdown" @change="handleFileUpload" hidden />
+        </label>
       </div>
     </div>
 
-    <!-- Search & Filter -->
-    <el-card shadow="never" class="search-card">
-      <el-row :gutter="16" align="middle">
-        <el-col :xs="18" :sm="20">
-          <el-input v-model="query.keyword" placeholder="搜索文档标题..." clearable :prefix-icon="Search" @clear="fetchDocuments" @keyup.enter="fetchDocuments" />
-        </el-col>
-        <el-col :xs="6" :sm="4">
-          <el-select v-model="query.status" placeholder="状态" clearable style="width:100%" @change="fetchDocuments">
-            <el-option label="已发布" :value="1" />
-            <el-option label="草稿" :value="0" />
-          </el-select>
-        </el-col>
-      </el-row>
-    </el-card>
-
     <!-- Document List -->
-    <el-card shadow="never" v-loading="loading">
-      <el-table :data="documents" stripe style="width:100%" @row-click="viewDetail">
-        <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip>
-          <template #default="{ row }">
-            <div class="doc-title">
-              <el-tag v-if="row.contentType === 'markdown'" size="small" type="info">MD</el-tag>
-              <span>{{ row.title }}</span>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="summary" label="摘要" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="status" label="状态" width="90">
-          <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'warning'" size="small">
-              {{ row.status === 1 ? '已发布' : '草稿' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="170" />
-        <el-table-column label="操作" width="140" fixed="right">
-          <template #default="{ row }">
-            <el-button text size="small" type="primary" @click.stop="viewDetail(row)">查看</el-button>
-            <el-button text size="small" type="danger" @click.stop="handleDelete(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+    <div class="doc-list" v-loading="loading">
+      <div v-if="documents.length === 0 && !loading" class="empty-state">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <rect x="8" y="4" width="32" height="40" rx="4" stroke="currentColor" stroke-width="2"/>
+          <path d="M16 16h16M16 24h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <p>还没有文档</p>
+        <span>点击「新建」或「上传」添加你的第一份文档</span>
+      </div>
 
-      <el-pagination
-        v-if="total > 0"
-        v-model:current-page="query.page"
-        v-model:page-size="query.pageSize"
-        :total="total"
-        :page-sizes="[10, 20, 50]"
-        layout="total, sizes, prev, pager, next"
-        class="pagination"
-        @change="fetchDocuments"
-      />
-    </el-card>
+      <div
+        v-for="doc in documents"
+        :key="doc.id"
+        class="doc-card"
+        @click="viewDetail(doc)"
+      >
+        <div class="doc-header">
+          <span class="doc-title">{{ doc.title }}</span>
+          <span class="doc-status" :class="doc.status === 1 ? 'published' : 'draft'">
+            {{ doc.status === 1 ? '已发布' : '草稿' }}
+          </span>
+        </div>
+        <p class="doc-summary">{{ doc.summary || '暂无摘要' }}</p>
+        <div class="doc-footer">
+          <span class="doc-type">{{ doc.contentType || 'markdown' }}</span>
+          <span class="doc-time">{{ formatDate(doc.createTime) }}</span>
+          <button class="doc-delete" @click.stop="handleDelete(doc)" title="删除">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 4h10M5 4V2h4v2M3 4v8a1 1 0 001 1h6a1 1 0 001-1V4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination" v-if="total > query.pageSize">
+      <button
+        class="page-btn"
+        :disabled="query.page <= 1"
+        @click="query.page--; fetchDocuments()"
+      >上一页</button>
+      <span class="page-info">第 {{ query.page }} 页，共 {{ Math.ceil(total / query.pageSize) }} 页</span>
+      <button
+        class="page-btn"
+        :disabled="query.page >= Math.ceil(total / query.pageSize)"
+        @click="query.page++; fetchDocuments()"
+      >下一页</button>
+    </div>
 
     <!-- Create Dialog -->
-    <el-dialog v-model="showCreateDialog" title="新建文档" width="700px" :close-on-click-modal="false">
-      <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="0">
-        <el-form-item prop="title">
-          <el-input v-model="createForm.title" placeholder="文档标题" />
-        </el-form-item>
-        <el-form-item prop="content">
-          <el-input v-model="createForm.content" type="textarea" :rows="15" placeholder="支持 Markdown 格式内容..." />
-        </el-form-item>
-        <el-form-item label="摘要">
-          <el-input v-model="createForm.summary" type="textarea" :rows="2" placeholder="文档摘要（可选）" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showCreateDialog = false">取消</el-button>
-        <el-button type="primary" :loading="creating" @click="handleCreate">创建</el-button>
-      </template>
-    </el-dialog>
+    <div v-if="showCreateDialog" class="dialog-overlay" @click.self="showCreateDialog = false">
+      <div class="dialog">
+        <div class="dialog-header">
+          <h3>新建文档</h3>
+          <button class="dialog-close" @click="showCreateDialog = false">&times;</button>
+        </div>
+        <div class="dialog-body">
+          <div class="form-group">
+            <label>标题</label>
+            <input v-model="createForm.title" placeholder="文档标题" />
+          </div>
+          <div class="form-group">
+            <label>内容</label>
+            <textarea v-model="createForm.content" rows="12" placeholder="支持 Markdown 格式..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>摘要（可选）</label>
+            <input v-model="createForm.summary" placeholder="简短描述" />
+          </div>
+        </div>
+        <div class="dialog-footer">
+          <button class="btn-ghost" @click="showCreateDialog = false">取消</button>
+          <button class="btn-primary" :disabled="creating" @click="handleCreate">
+            {{ creating ? '创建中...' : '创建' }}
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Detail Dialog -->
-    <el-dialog v-model="showDetailDialog" title="文档详情" width="800px" :close-on-click-modal="false" top="5vh">
-      <template v-if="currentDoc">
-        <h3 class="detail-title">{{ currentDoc.title }}</h3>
-        <div class="detail-meta">
-          <el-tag v-if="currentDoc.contentType === 'markdown'" size="small">Markdown</el-tag>
-          <el-tag :type="currentDoc.status === 1 ? 'success' : 'warning'" size="small">
-            {{ currentDoc.status === 1 ? '已发布' : '草稿' }}
-          </el-tag>
-          <span class="detail-time">创建: {{ currentDoc.createTime }}</span>
+    <div v-if="showDetailDialog && currentDoc" class="dialog-overlay" @click.self="showDetailDialog = false">
+      <div class="dialog dialog-lg">
+        <div class="dialog-header">
+          <h3>{{ currentDoc.title }}</h3>
+          <button class="dialog-close" @click="showDetailDialog = false">&times;</button>
         </div>
-        <el-divider />
-        <div class="detail-content markdown-body" v-html="renderedContent" />
-      </template>
-      <template #footer>
-        <el-button @click="showDetailDialog = false">关闭</el-button>
-        <el-button type="primary" @click="indexDocument">索引到 RAG</el-button>
-      </template>
-    </el-dialog>
+        <div class="dialog-body">
+          <div class="detail-meta">
+            <span class="meta-tag">{{ currentDoc.contentType || 'markdown' }}</span>
+            <span class="meta-tag" :class="currentDoc.status === 1 ? 'published' : 'draft'">
+              {{ currentDoc.status === 1 ? '已发布' : '草稿' }}
+            </span>
+            <span class="meta-time">{{ currentDoc.createTime }}</span>
+          </div>
+          <div class="detail-content">{{ currentDoc.content }}</div>
+        </div>
+        <div class="dialog-footer">
+          <button class="btn-ghost" @click="showDetailDialog = false">关闭</button>
+          <button class="btn-primary" @click="indexDocument">索引到 RAG</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, UploadFilled } from '@element-plus/icons-vue'
 import { getDocuments, createDocument, deleteDocument, uploadDocument, getDocumentDetail } from '@/api/document'
 import { indexDocument as indexDoc } from '@/api/rag'
 import type { DocumentVO } from '@/api/document'
-import type { FormInstance, FormRules } from 'element-plus'
 
 const loading = ref(false)
 const creating = ref(false)
-const uploading = ref(false)
 const documents = ref<DocumentVO[]>([])
 const total = ref(0)
 const showCreateDialog = ref(false)
 const showDetailDialog = ref(false)
 const currentDoc = ref<DocumentVO | null>(null)
-const createFormRef = ref<FormInstance>()
 
 const query = reactive({
   page: 1,
@@ -148,24 +167,16 @@ const createForm = reactive({
   content: '',
 })
 
-const createRules: FormRules = {
-  title: [{ required: true, message: '请输入文档标题', trigger: 'blur' }],
-  content: [{ required: true, message: '请输入文档内容', trigger: 'blur' }],
+function formatDate(dateStr?: string) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  const now = new Date()
+  const diff = now.getTime() - d.getTime()
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`
+  return d.toLocaleDateString('zh-CN')
 }
-
-const renderedContent = computed(() => {
-  if (!currentDoc.value?.content) return ''
-  return currentDoc.value.content
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
-    .replace(/#{3}\s+(.+)/g, '<h3>$1</h3>')
-    .replace(/#{2}\s+(.+)/g, '<h2>$1</h2>')
-    .replace(/#{1}\s+(.+)/g, '<h1>$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/\n/g, '<br>')
-})
 
 async function fetchDocuments() {
   loading.value = true
@@ -179,42 +190,39 @@ async function fetchDocuments() {
   finally { loading.value = false }
 }
 
-// 处理上传文件
-async function handleUpload(file: File) {
-  uploading.value = true
+async function handleFileUpload(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
   try {
-    const res: any = await uploadDocument(file)
-    if (res?.data) {
-      ElMessage.success('上传成功')
-      await fetchDocuments()
-    }
+    await uploadDocument(file)
+    ElMessage.success('上传成功')
+    await fetchDocuments()
   } catch { /* ignore */ }
-  finally { uploading.value = false }
-  return false // 阻止默认上传
+  input.value = ''
 }
 
 async function handleCreate() {
-  const valid = await createFormRef.value?.validate().catch(() => false)
-  if (!valid) return
-
+  if (!createForm.title || !createForm.content) {
+    ElMessage.warning('请填写标题和内容')
+    return
+  }
   creating.value = true
   try {
-    const res: any = await createDocument(createForm)
-    if (res?.data) {
-      ElMessage.success('创建成功')
-      showCreateDialog.value = false
-      createForm.title = ''
-      createForm.summary = ''
-      createForm.content = ''
-      await fetchDocuments()
-    }
+    await createDocument(createForm)
+    ElMessage.success('创建成功')
+    showCreateDialog.value = false
+    createForm.title = ''
+    createForm.summary = ''
+    createForm.content = ''
+    await fetchDocuments()
   } catch { /* ignore */ }
   finally { creating.value = false }
 }
 
-async function viewDetail(row: DocumentVO) {
+async function viewDetail(doc: DocumentVO) {
   try {
-    const res: any = await getDocumentDetail(row.id)
+    const res: any = await getDocumentDetail(doc.id)
     if (res?.data) {
       currentDoc.value = res.data
       showDetailDialog.value = true
@@ -222,10 +230,10 @@ async function viewDetail(row: DocumentVO) {
   } catch { /* ignore */ }
 }
 
-async function handleDelete(row: DocumentVO) {
+async function handleDelete(doc: DocumentVO) {
   try {
-    await ElMessageBox.confirm(`确定删除文档「${row.title}」？`, '确认删除', { type: 'warning' })
-    await deleteDocument(row.id)
+    await ElMessageBox.confirm(`确定删除「${doc.title}」？`, '确认删除', { type: 'warning' })
+    await deleteDocument(doc.id)
     ElMessage.success('删除成功')
     await fetchDocuments()
   } catch { /* ignore */ }
@@ -235,7 +243,7 @@ async function indexDocument() {
   if (!currentDoc.value) return
   try {
     await indexDoc(currentDoc.value.id)
-    ElMessage.success('文档已索引到 RAG 知识库，可以进行问答了')
+    ElMessage.success('索引成功，可以开始 RAG 问答了')
   } catch { /* ignore */ }
 }
 
@@ -243,65 +251,391 @@ onMounted(fetchDocuments)
 </script>
 
 <style scoped>
+.documents-page {
+  max-width: 960px;
+}
+
 .page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
   margin-bottom: 20px;
 }
 
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #1a202c;
-  margin: 0;
-}
-
-.page-desc {
-  color: #718096;
-  font-size: 14px;
-  margin: 4px 0 0 0;
-}
-
-.page-actions {
+.header-actions {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
-.search-card {
-  margin-bottom: 16px;
+.search-box {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 36px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-tertiary);
 }
 
-.doc-title {
+.search-box input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  background: none;
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+}
+
+.search-box input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.btn-secondary {
   display: flex;
   align-items: center;
   gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  font-family: var(--font-sans);
 }
 
+.btn-secondary:hover {
+  background: var(--color-bg-hover);
+}
+
+.upload-btn {
+  cursor: pointer;
+}
+
+/* Document List */
+.doc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--color-text-tertiary);
+}
+
+.empty-state svg {
+  margin-bottom: 16px;
+  opacity: 0.4;
+}
+
+.empty-state p {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+}
+
+.empty-state span {
+  font-size: 13px;
+}
+
+.doc-card {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.doc-card:hover {
+  border-color: var(--color-accent-subtle);
+  box-shadow: var(--shadow-sm);
+}
+
+.doc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.doc-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.doc-status {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 9999px;
+}
+
+.doc-status.published {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.doc-status.draft {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.doc-summary {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin: 0 0 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.doc-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.doc-type {
+  text-transform: uppercase;
+  font-weight: 500;
+  font-size: 11px;
+}
+
+.doc-delete {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: all 0.12s ease;
+}
+
+.doc-card:hover .doc-delete {
+  opacity: 1;
+}
+
+.doc-delete:hover {
+  color: var(--color-error);
+  background: #fef2f2;
+}
+
+/* Pagination */
 .pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
   margin-top: 20px;
-  justify-content: flex-end;
+  padding: 16px 0;
 }
 
-.detail-title {
+.page-btn {
+  height: 32px;
+  padding: 0 12px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.page-info {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+/* Dialog */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+}
+
+.dialog {
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-lg);
+  width: 560px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-xl);
+}
+
+.dialog-lg {
+  width: 720px;
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.dialog-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.dialog-close {
+  background: none;
+  border: none;
   font-size: 20px;
-  margin: 0 0 8px 0;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+
+.dialog-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin-bottom: 6px;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  font-family: var(--font-sans);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  border-color: var(--color-accent);
+}
+
+.form-group textarea {
+  resize: vertical;
+  line-height: 1.6;
 }
 
 .detail-meta {
   display: flex;
   gap: 8px;
   align-items: center;
+  margin-bottom: 16px;
 }
 
-.detail-time {
+.meta-tag {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+}
+
+.meta-tag.published {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.meta-tag.draft {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.meta-time {
   font-size: 12px;
-  color: #a0aec0;
+  color: var(--color-text-tertiary);
 }
 
 .detail-content {
-  line-height: 1.8;
   font-size: 14px;
-  color: #2d3748;
+  line-height: 1.8;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--color-bg-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.btn-primary {
+  height: 36px;
+  padding: 0 16px;
+  background: var(--color-accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  height: 36px;
+  padding: 0 16px;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-family: var(--font-sans);
 }
 </style>

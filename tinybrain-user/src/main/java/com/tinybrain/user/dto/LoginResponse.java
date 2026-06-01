@@ -1,11 +1,13 @@
 package com.tinybrain.user.dto;
 
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * 登录响应 DTO
  */
 @Data
+@NoArgsConstructor
 public class LoginResponse {
 
     /** JWT Token */

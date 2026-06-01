@@ -1,7 +1,7 @@
 package com.tinybrain.rag.controller;
 
-import com.tinybrain.common.constant.CommonConstant;
 import com.tinybrain.common.response.R;
+import com.tinybrain.common.util.SecurityUtil;
 import com.tinybrain.rag.dto.RAGResult;
 import com.tinybrain.rag.service.DocumentIndexingService;
 import com.tinybrain.rag.service.RAGService;
@@ -29,8 +29,8 @@ public class RAGController {
 
     @Operation(summary = "索引文档", description = "将文档分块、向量化后存入向量库（异步执行，立即返回）")
     @PostMapping("/index/{documentId}")
-    public R<Void> indexDocument(@PathVariable Long documentId,
-                                 @Parameter(hidden = true) @RequestAttribute(CommonConstant.CURRENT_USER) Long userId) {
+    public R<Void> indexDocument(@PathVariable Long documentId) {
+        Long userId = SecurityUtil.getCurrentUserId();
         // 异步执行索引，不阻塞 HTTP 线程
         indexingService.indexDocumentAsync(documentId, userId);
         return R.okMsg("文档索引任务已提交，将在后台异步执行");

@@ -1,10 +1,10 @@
 package com.tinybrain.user.controller;
 
 import com.tinybrain.common.response.R;
+import com.tinybrain.common.util.SecurityUtil;
 import com.tinybrain.user.dto.*;
 import com.tinybrain.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +40,8 @@ public class AuthController {
 
     @Operation(summary = "获取当前用户", description = "从请求头中的 JWT Token 解析当前用户信息")
     @GetMapping("/me")
-    public R<UserVO> me(@Parameter(hidden = true) @RequestAttribute Long currentUserId) {
+    public R<UserVO> me() {
+        Long currentUserId = SecurityUtil.getCurrentUserId();
         UserVO userVO = userService.getCurrentUser(currentUserId);
         return R.ok(userVO);
     }

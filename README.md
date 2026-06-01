@@ -10,6 +10,10 @@
     <img src="https://img.shields.io/badge/Java-17-orange" alt="Java 17" />
     <img src="https://img.shields.io/badge/Spring%20Boot-3.2.5-brightgreen" alt="Spring Boot 3.2" />
     <img src="https://img.shields.io/badge/Spring%20Cloud-2023.0.3-blueviolet" alt="Spring Cloud 2023" />
+    <a href="./TEST-REPORT.md">
+      <img src="https://img.shields.io/badge/Tests-108%20passed-brightgreen" alt="Tests" />
+    </a>
+    <img src="https://img.shields.io/badge/Coverage-44%25-yellow" alt="Coverage" />
   </p>
 
   <p>
@@ -268,6 +272,8 @@ mvn spring-boot:run
 | RAG | GET | `/api/rag/ask` | RAG question answering |
 | Agent | POST | `/api/agent/chat` | Agent conversation |
 | Agent | GET | `/api/agent/tools` | List available tools |
+
+> 📋 完整测试报告见 [TEST-REPORT.md](./TEST-REPORT.md)
 
 ---
 

@@ -1,111 +1,92 @@
 <template>
-  <div class="agent-page">
-    <div class="page-header">
-      <div>
-        <h2 class="page-title">AI Agent</h2>
-        <p class="page-desc">智能体对话，自动调用工具（知识搜索、计算器、日期时间等）</p>
+  <div class="chat-page">
+    <div class="chat-container">
+      <!-- Messages -->
+      <div class="messages" ref="messagesRef">
+        <div v-if="messages.length === 0" class="empty-state">
+          <div class="empty-icon">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+              <path d="M24 4v4M24 40v4M4 24h4M40 24h4M8.6 8.6l2.8 2.8M36.6 36.6l2.8 2.8M8.6 39.4l2.8-2.8M36.6 11.4l2.8-2.8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="24" cy="24" r="8" stroke="currentColor" stroke-width="2.5"/>
+            </svg>
+          </div>
+          <h3>AI Agent</h3>
+          <p>智能体可以自主调用工具来回答问题</p>
+          <div class="empty-suggestions">
+            <button v-for="s in suggestions" :key="s" class="suggestion" @click="userMessage = s">
+              {{ s }}
+            </button>
+          </div>
+        </div>
+
+        <div v-for="(msg, i) in messages" :key="i" class="message" :class="msg.role">
+          <div class="msg-avatar">
+            <template v-if="msg.role === 'user'">U</template>
+            <template v-else>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 2v2M8 12v2M2 8h2M12 8h2M4.2 4.2l1.4 1.4M10.4 10.4l1.4 1.4M4.2 11.8l1.4-1.4M10.4 5.6l1.4-1.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.5"/>
+              </svg>
+            </template>
+          </div>
+          <div class="msg-body">
+            <div class="msg-content">
+              <div v-if="msg.loading" class="typing">
+                <span></span><span></span><span></span>
+              </div>
+              <template v-else>{{ msg.content }}</template>
+            </div>
+            <!-- Tool Calls -->
+            <div v-if="msg.toolCalls && msg.toolCalls.length > 0" class="tool-calls">
+              <div v-for="(tc, ti) in msg.toolCalls" :key="ti" class="tool-call">
+                <div class="tc-header">
+                  <span class="tc-name">{{ tc.toolName }}</span>
+                  <span class="tc-args">{{ tc.args }}</span>
+                </div>
+                <div class="tc-result">{{ tc.result }}</div>
+              </div>
+            </div>
+            <div v-if="msg.iterations != null && msg.iterations > 1" class="msg-meta">
+              {{ msg.iterations }} 轮工具调用
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input -->
+      <div class="input-area">
+        <div class="input-wrapper">
+          <textarea
+            v-model="userMessage"
+            placeholder="输入消息，Agent 会自动调用工具..."
+            :disabled="chatting"
+            @keydown.enter.ctrl="sendMessage"
+            @keydown.enter.meta="sendMessage"
+            rows="1"
+            ref="inputRef"
+          ></textarea>
+          <button class="send-btn" :disabled="!userMessage.trim() || chatting" @click="sendMessage">
+            <svg v-if="!chatting" width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path d="M3 9h12M10 4l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span v-else class="spinner"></span>
+          </button>
+        </div>
+        <div class="input-footer">
+          <span class="input-hint">Ctrl + Enter 发送</span>
+          <div class="tools-bar">
+            <span v-for="tool in tools" :key="tool.name" class="tool-chip">
+              {{ tool.name }}
+            </span>
+          </div>
+        </div>
       </div>
     </div>
-
-    <el-row :gutter="20">
-      <!-- Chat Area -->
-      <el-col :xs="24" :lg="16">
-        <el-card shadow="never" class="chat-card">
-          <div class="chat-messages" ref="messagesRef">
-            <div v-if="messages.length === 0" class="chat-empty">
-              <div class="empty-icon">🤖</div>
-              <p>开始与 AI Agent 对话</p>
-              <p class="empty-hint">Agent 可以调用工具来回答问题，试试 "今天几号？" 或 "搜索关于 Spring 的知识"</p>
-            </div>
-            <div v-for="(msg, i) in messages" :key="i" :class="['message', msg.role]">
-              <div class="message-avatar">{{ msg.role === 'user' ? '👤' : '🤖' }}</div>
-              <div class="message-content">
-                <div class="message-bubble">
-                  <div v-if="msg.loading" class="loading-dots">
-                    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-                  </div>
-                  <div v-else>{{ msg.content }}</div>
-                </div>
-                <!-- Tool calls -->
-                <div v-if="msg.toolCalls && msg.toolCalls.length > 0" class="tool-calls">
-                  <div v-for="(tc, ti) in msg.toolCalls" :key="ti" class="tool-call-item">
-                    <div class="tool-call-header">
-                      <el-tag size="small" type="warning">🔧 {{ tc.toolName }}</el-tag>
-                      <el-tag size="small" type="info">参数: {{ tc.args }}</el-tag>
-                    </div>
-                    <div class="tool-call-result">
-                      {{ tc.result }}
-                    </div>
-                  </div>
-                </div>
-                <div v-if="msg.iterations != null && msg.iterations > 0" class="msg-meta">
-                  共 {{ msg.iterations }} 轮工具调用
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="chat-input">
-            <el-input
-              v-model="userMessage"
-              type="textarea"
-              :rows="2"
-              placeholder="输入消息..."
-              :disabled="chatting"
-              @keyup.ctrl.enter="sendMessage"
-            />
-            <el-button type="primary" :loading="chatting" :disabled="!userMessage.trim()" @click="sendMessage" class="send-btn">
-              {{ chatting ? '思考中...' : '发送' }}
-            </el-button>
-          </div>
-        </el-card>
-      </el-col>
-
-      <!-- Sidebar -->
-      <el-col :xs="24" :lg="8">
-        <el-card shadow="never" class="info-card">
-          <template #header>
-            <span class="card-title">🤖 可用工具</span>
-          </template>
-          <div v-if="tools.length === 0" class="tools-empty">
-            <p>加载工具列表中...</p>
-          </div>
-          <div v-else class="tool-list">
-            <div v-for="tool in tools" :key="tool.name" class="tool-item">
-              <div class="tool-name">
-                <el-tag size="small" type="warning" effect="plain">{{ tool.name }}</el-tag>
-              </div>
-              <div class="tool-desc">{{ tool.description }}</div>
-            </div>
-          </div>
-        </el-card>
-
-        <el-card shadow="never" class="info-card" style="margin-top:16px">
-          <template #header>
-            <span class="card-title">📊 会话信息</span>
-          </template>
-          <div class="session-info">
-            <div class="info-item">
-              <span class="info-label">消息数</span>
-              <span class="info-value">{{ messages.filter(m => m.role === 'user').length }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Session ID</span>
-              <span class="info-value session-id" :title="sessionId">{{ sessionId.substring(0, 8) }}...</span>
-            </div>
-            <el-button type="danger" size="small" plain @click="clearChat" style="width:100%;margin-top:12px">
-              清空对话
-            </el-button>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
-import { ElMessage } from 'element-plus'
 import { chatWithAgent, getAgentTools, clearSession } from '@/api/agent'
 import type { ToolCall as ToolCallType } from '@/api/agent'
 
@@ -122,15 +103,22 @@ interface ToolItem {
   description: string
 }
 
+const suggestions = [
+  '今天几号？',
+  '帮我算一下 (15 + 3) * 2',
+  '搜索关于 Spring Boot 的知识',
+]
+
 const messages = ref<ChatMessage[]>([])
 const userMessage = ref('')
 const chatting = ref(false)
 const tools = ref<ToolItem[]>([])
 const sessionId = ref(generateSessionId())
 const messagesRef = ref<HTMLElement>()
+const inputRef = ref<HTMLTextAreaElement>()
 
 function generateSessionId() {
-  return 'session_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8)
+  return 's_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6)
 }
 
 function scrollToBottom() {
@@ -160,20 +148,20 @@ async function sendMessage() {
       sessionId: sessionId.value,
     })
 
-    loadingMsg.loading = false
     if (res?.data) {
-      loadingMsg.content = res.data.reply || 'Agent 处理完成'
+      loadingMsg.content = res.data.reply || '处理完成'
       loadingMsg.toolCalls = res.data.toolCalls || []
       loadingMsg.iterations = res.data.iterations
     } else {
-      loadingMsg.content = 'Agent 暂时无法响应，请稍后重试。'
+      loadingMsg.content = 'Agent 暂时无法响应。'
     }
-  } catch (e) {
-    loadingMsg.loading = false
-    loadingMsg.content = '对话请求失败，请检查后端服务。'
+  } catch {
+    loadingMsg.content = '请求失败，请检查后端服务。'
   } finally {
+    loadingMsg.loading = false
     chatting.value = false
     scrollToBottom()
+    inputRef.value?.focus()
   }
 }
 
@@ -181,233 +169,313 @@ async function fetchTools() {
   try {
     const res: any = await getAgentTools()
     if (res?.data) {
-      tools.value = Object.entries(res.data).map(([name, description]) => ({
+      tools.value = Object.entries(res.data).map(([name, desc]) => ({
         name,
-        description: description as string,
+        description: desc as string,
       }))
     }
   } catch { /* ignore */ }
-}
-
-function clearChat() {
-  messages.value = []
-  try {
-    clearSession(sessionId.value)
-  } catch { /* ignore */ }
-  sessionId.value = generateSessionId()
-  ElMessage.success('对话已清空')
 }
 
 onMounted(fetchTools)
 </script>
 
 <style scoped>
-.page-header {
-  margin-bottom: 20px;
+.chat-page {
+  height: calc(100vh - 56px - 48px);
+  display: flex;
+  justify-content: center;
 }
 
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #1a202c;
-  margin: 0;
-}
-
-.page-desc {
-  color: #718096;
-  font-size: 14px;
-  margin: 4px 0 0 0;
-}
-
-.chat-card {
-  border-radius: 12px;
-}
-
-.chat-messages {
-  height: 500px;
-  overflow-y: auto;
-  padding: 16px;
-  margin-bottom: 16px;
+.chat-container {
+  width: 100%;
+  max-width: 768px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  height: 100%;
 }
 
-.chat-empty {
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 0;
+}
+
+.empty-state {
   text-align: center;
-  padding: 80px 0;
-  color: #a0aec0;
+  padding: 60px 20px;
+  color: var(--color-text-tertiary);
 }
 
 .empty-icon {
-  font-size: 48px;
+  color: var(--color-text-tertiary);
+  opacity: 0.4;
   margin-bottom: 16px;
 }
 
-.empty-hint {
-  font-size: 12px;
-  margin-top: 4px;
-  color: #a0aec0;
+.empty-state h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 8px;
 }
 
+.empty-state p {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin-bottom: 20px;
+}
+
+.empty-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.suggestion {
+  padding: 8px 16px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 9999px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  font-family: var(--font-sans);
+}
+
+.suggestion:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* Messages */
 .message {
   display: flex;
   gap: 12px;
-  max-width: 85%;
-}
-
-.message.assistant {
-  align-self: flex-start;
+  margin-bottom: 20px;
 }
 
 .message.user {
-  align-self: flex-end;
   flex-direction: row-reverse;
 }
 
-.message-avatar {
-  font-size: 24px;
+.msg-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
   flex-shrink: 0;
 }
 
-.message-bubble {
-  background: #f0f4ff;
+.message.user .msg-avatar {
+  background: var(--color-accent);
+  color: white;
+}
+
+.message.assistant .msg-avatar {
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.msg-body {
+  min-width: 0;
+  max-width: 85%;
+}
+
+.msg-content {
   padding: 12px 16px;
-  border-radius: 12px;
-  line-height: 1.6;
+  border-radius: var(--radius-md);
   font-size: 14px;
-  color: #2d3748;
+  line-height: 1.7;
   white-space: pre-wrap;
+  word-break: break-word;
 }
 
-.message.user .message-bubble {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: #fff;
+.message.user .msg-content {
+  background: var(--color-accent);
+  color: white;
+  border-bottom-right-radius: 4px;
 }
 
-.loading-dots {
+.message.assistant .msg-content {
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-bottom-left-radius: 4px;
+}
+
+.typing {
   display: flex;
   gap: 4px;
   padding: 4px 0;
 }
 
-.dot {
-  width: 8px;
-  height: 8px;
-  background: #667eea;
+.typing span {
+  width: 6px;
+  height: 6px;
+  background: var(--color-text-tertiary);
   border-radius: 50%;
-  animation: bounce 1.4s infinite ease-in-out;
+  animation: pulse 1.4s infinite ease-in-out;
 }
 
-.dot:nth-child(2) { animation-delay: 0.16s; }
-.dot:nth-child(3) { animation-delay: 0.32s; }
+.typing span:nth-child(2) { animation-delay: 0.2s; }
+.typing span:nth-child(3) { animation-delay: 0.4s; }
 
-@keyframes bounce {
-  0%, 80%, 100% { transform: scale(0); }
-  40% { transform: scale(1); }
+@keyframes pulse {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
 }
 
+/* Tool Calls */
 .tool-calls {
   margin-top: 8px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
-.tool-call-item {
-  background: #fffbeb;
-  border-radius: 8px;
-  padding: 8px;
-  border: 1px solid #fef3c7;
+.tool-call {
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 12px;
 }
 
-.tool-call-header {
+.tc-header {
   display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
   margin-bottom: 4px;
 }
 
-.tool-call-result {
-  font-size: 12px;
-  color: #92400e;
-  margin-top: 4px;
-  padding: 4px 8px;
-  background: rgba(255, 255, 255, 0.5);
+.tc-name {
+  font-weight: 600;
+  color: var(--color-accent);
+  background: var(--color-accent-light);
+  padding: 1px 6px;
   border-radius: 4px;
+  font-size: 11px;
+}
+
+.tc-args {
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.tc-result {
+  color: var(--color-text-secondary);
+  line-height: 1.5;
 }
 
 .msg-meta {
   font-size: 11px;
-  color: #a0aec0;
+  color: var(--color-text-tertiary);
   margin-top: 4px;
 }
 
-.chat-input {
+/* Input */
+.input-area {
+  padding: 16px 0 20px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.input-wrapper {
   display: flex;
-  gap: 12px;
-  align-items: flex-start;
+  gap: 8px;
+  align-items: flex-end;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 8px 8px 8px 16px;
+  transition: border-color 0.15s ease;
+}
+
+.input-wrapper:focus-within {
+  border-color: var(--color-accent);
+}
+
+.input-wrapper textarea {
+  flex: 1;
+  border: none;
+  outline: none;
+  resize: none;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  background: none;
+  font-family: var(--font-sans);
+  max-height: 120px;
+}
+
+.input-wrapper textarea::placeholder {
+  color: var(--color-text-tertiary);
 }
 
 .send-btn {
-  height: 50px;
-  min-width: 100px;
-}
-
-.card-title {
-  font-weight: 600;
-  font-size: 15px;
-}
-
-.tools-empty {
-  color: #a0aec0;
-  font-size: 13px;
-}
-
-.tool-list {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: white;
+  border: none;
+  cursor: pointer;
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
-.tool-item {
-  padding: 8px;
-  border-radius: 8px;
-  background: #f7fafc;
+.send-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
-.tool-name {
-  margin-bottom: 4px;
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
 }
 
-.tool-desc {
-  font-size: 12px;
-  color: #718096;
-  margin-top: 4px;
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-.session-info {
-  font-size: 14px;
-}
-
-.info-item {
+.input-footer {
   display: flex;
   justify-content: space-between;
-  padding: 8px 0;
-  border-bottom: 1px solid #e2e8f0;
+  align-items: center;
+  margin-top: 8px;
 }
 
-.info-label {
-  color: #718096;
+.input-hint {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
 }
 
-.info-value {
-  font-weight: 600;
-  color: #2d3748;
+.tools-bar {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 
-.session-id {
-  font-family: monospace;
-  font-size: 12px;
+.tool-chip {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 8px;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-tertiary);
+  border-radius: 9999px;
 }
 </style>

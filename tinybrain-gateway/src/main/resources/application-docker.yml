@@ -14,31 +14,24 @@ spring:
   cloud:
     gateway:
       routes:
-        # 用户服务路由（Docker 环境直连）
-        - id: user-service
+        # 所有 API 请求统一代理到 tinybrain-app 容器
+        - id: app-api
           uri: http://tinybrain-app:8080
           predicates:
-            - Path=/api/auth/**
-        # 知识库服务路由
-        - id: knowledge-service
-          uri: http://tinybrain-app:8080
-          predicates:
-            - Path=/api/documents/**
-        # RAG 服务路由
-        - id: rag-service
-          uri: http://tinybrain-app:8080
-          predicates:
-            - Path=/api/rag/**
-        # Agent 服务路由
-        - id: agent-service
-          uri: http://tinybrain-app:8080
-          predicates:
-            - Path=/api/agent/**
+            - Path=/api/**
         # Swagger UI
         - id: openapi
           uri: http://tinybrain-app:8080
           predicates:
             - Path=/v3/api-docs/**, /swagger-ui/**, /swagger-ui.html
+
+      # 限流过滤器
+      default-filters:
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: 100
+            redis-rate-limiter.burstCapacity: 200
+
     # 禁用 Nacos
     nacos:
       discovery:

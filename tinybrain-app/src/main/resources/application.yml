@@ -22,10 +22,6 @@ spring:
       max-lifetime: 1200000
       connection-timeout: 30000
 
-  # Elasticsearch 配置（全文检索）
-  elasticsearch:
-    uris: http://localhost:9200
-
   # Jackson 日期格式
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
@@ -141,4 +137,3 @@ logging:
   level:
     com.tinybrain: DEBUG
     org.springframework.security: INFO
-    org.elasticsearch.client: INFO

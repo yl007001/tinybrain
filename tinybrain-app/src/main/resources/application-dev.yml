@@ -17,15 +17,11 @@ spring:
       enabled: true
       path: /h2-console
 
-  # JPA DDL（配合 MyBatis-Plus 初始化表结构）
+  # 初始化表结构
   sql:
     init:
       mode: always
       schema-locations: classpath:sql/schema.sql
-
-  # Elasticsearch 开发环境可跳过
-  elasticsearch:
-    uris: http://localhost:9200
 
 mybatis-plus:
   configuration:

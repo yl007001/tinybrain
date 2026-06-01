@@ -17,9 +17,8 @@ import java.time.Duration;
  * Agent 通过此工具执行网络搜索，获取实时信息。
  * 使用 SerpAPI / Bing Search 等兼容搜索引擎 API。
  * <p>
- * 配置：
- * - tinybrain.search.api-key: 搜索引擎 API Key
- * - tinybrain.search.api-url: 搜索引擎 API 地址
+ * 返回结构化的搜索结果（标题 + 摘要 + 链接），
+ * 而非原始 JSON，让 Agent 能更好地理解和引用搜索结果。
  */
 @Slf4j
 @Component
@@ -93,7 +92,6 @@ public class WebSearchTool implements AgentTool {
         try {
             log.info("Agent 调用网络搜索: query={}", query);
 
-            // 简单实现：调用搜索引擎 API
             String response = webClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/search")
@@ -109,11 +107,62 @@ public class WebSearchTool implements AgentTool {
                 return "Web search returned no results for: " + query;
             }
 
-            return "Web search results for \"" + query + "\":\n" + response;
+            // 解析 SerpAPI 返回的 JSON，提取结构化结果
+            return parseSearchResults(response, query);
         } catch (Exception e) {
             log.warn("网络搜索失败: {}", e.getMessage());
             return "Web search failed: " + e.getMessage() + ". " +
                    "The search service may be unavailable. Try using knowledge base search instead.";
+        }
+    }
+
+    /**
+     * 解析搜索引擎返回的 JSON，提取标题、摘要、链接
+     */
+    private String parseSearchResults(String jsonResponse, String query) {
+        try {
+            JsonNode root = new ObjectMapper().readTree(jsonResponse);
+            StringBuilder sb = new StringBuilder();
+            sb.append("Search results for \"").append(query).append("\":\n\n");
+
+            // 尝试解析 SerpAPI 格式的 organic_results
+            JsonNode organicResults = root.path("organic_results");
+            if (organicResults.isArray() && organicResults.size() > 0) {
+                int count = Math.min(organicResults.size(), 5);
+                for (int i = 0; i < count; i++) {
+                    JsonNode result = organicResults.get(i);
+                    String title = result.path("title").asText("No title");
+                    String snippet = result.path("snippet").asText("No description");
+                    String link = result.path("link").asText("");
+
+                    sb.append(i + 1).append(". ").append(title).append("\n");
+                    sb.append("   ").append(snippet).append("\n");
+                    if (!link.isBlank()) {
+                        sb.append("   Source: ").append(link).append("\n");
+                    }
+                    sb.append("\n");
+                }
+                return sb.toString().trim();
+            }
+
+            // 尝试解析 answer_box（即时回答）
+            JsonNode answerBox = root.path("answer_box");
+            if (!answerBox.isMissingNode()) {
+                String answer = answerBox.path("answer").asText(
+                        answerBox.path("snippet").asText(""));
+                if (!answer.isBlank()) {
+                    return "Direct answer: " + answer;
+                }
+            }
+
+            // 回退：返回原始 JSON 的前 500 字符
+            String raw = jsonResponse.length() > 500 ? jsonResponse.substring(0, 500) + "..." : jsonResponse;
+            return "Search results (raw): " + raw;
+
+        } catch (Exception e) {
+            log.debug("搜索结果解析失败，返回原始数据: {}", e.getMessage());
+            String raw = jsonResponse.length() > 500 ? jsonResponse.substring(0, 500) + "..." : jsonResponse;
+            return "Search results: " + raw;
         }
     }
 }

@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS sys_user (
     status      TINYINT      NOT NULL DEFAULT 1 COMMENT '状态: 1=正常, 0=禁用',
     deleted     TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除: 0=未删, 1=已删',
     create_time DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    update_time DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    update_time DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
     CONSTRAINT uk_username UNIQUE (username)
 );
 
@@ -60,6 +60,6 @@ CREATE TABLE IF NOT EXISTS kb_document_chunk (
 -- 初始数据
 -- ----------------------------
 INSERT INTO sys_user (username, password, nickname, role) VALUES
-('admin', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '管理员', 'ROLE_ADMIN'),
-('demo',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '演示用户', 'ROLE_USER');
+('admin', '$2a$10$ZyIEJtkizUvFjq9/7RzKvubcw6IXvxkXkBw1nPFVVHC7xvlyJil8i', '管理员', 'ROLE_ADMIN'),
+('demo',  '$2a$10$ZyIEJtkizUvFjq9/7RzKvubcw6IXvxkXkBw1nPFVVHC7xvlyJil8i', '演示用户', 'ROLE_USER');
 -- 说明：两个用户的密码都是 "password"，BCrypt 加密

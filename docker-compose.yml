@@ -21,8 +21,6 @@
 #   Elasticsearch:     http://localhost:9200
 # =============================================================================
 
-version: "3.8"
-
 services:
 
   # ========================
@@ -61,28 +59,6 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 3s
-      retries: 5
-    networks:
-      - tinybrain-net
-
-  # ========================
-  # Elasticsearch — 全文检索
-  # ========================
-  elasticsearch:
-    image: elasticsearch:7.17.24
-    container_name: tinybrain-es
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-    ports:
-      - "9200:9200"
-    volumes:
-      - es-data:/usr/share/elasticsearch/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
-      interval: 15s
-      timeout: 10s
       retries: 5
     networks:
       - tinybrain-net
@@ -162,8 +138,6 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
       redis:
         condition: service_healthy
     networks:
@@ -193,7 +167,6 @@ services:
 # ========================
 volumes:
   mysql-data:
-  es-data:
   prometheus-data:
   grafana-data:
   app-data:

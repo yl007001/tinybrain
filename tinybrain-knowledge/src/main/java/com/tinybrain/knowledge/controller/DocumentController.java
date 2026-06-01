@@ -1,8 +1,8 @@
 package com.tinybrain.knowledge.controller;
 
-import com.tinybrain.common.constant.CommonConstant;
 import com.tinybrain.common.response.PageResult;
 import com.tinybrain.common.response.R;
+import com.tinybrain.common.util.SecurityUtil;
 import com.tinybrain.knowledge.dto.*;
 import com.tinybrain.knowledge.service.DocumentService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,8 +36,8 @@ public class DocumentController {
 
     @Operation(summary = "创建文档", description = "创建新的知识库文档，支持 Markdown/纯文本格式")
     @PostMapping
-    public R<DocumentVO> create(@Valid @RequestBody DocumentCreateRequest request,
-                                @Parameter(hidden = true) @RequestAttribute(CommonConstant.CURRENT_USER) Long userId) {
+    public R<DocumentVO> create(@Valid @RequestBody DocumentCreateRequest request) {
+        Long userId = SecurityUtil.getCurrentUserId();
         DocumentVO doc = documentService.create(request, userId);
         return R.ok("创建成功", doc);
     }
@@ -45,16 +45,16 @@ public class DocumentController {
     @Operation(summary = "更新文档", description = "更新文档标题、摘要、内容、标签等字段")
     @PutMapping("/{id}")
     public R<DocumentVO> update(@PathVariable Long id,
-                                @Valid @RequestBody DocumentUpdateRequest request,
-                                @Parameter(hidden = true) @RequestAttribute(CommonConstant.CURRENT_USER) Long userId) {
+                                @Valid @RequestBody DocumentUpdateRequest request) {
+        Long userId = SecurityUtil.getCurrentUserId();
         DocumentVO doc = documentService.update(id, request, userId);
         return R.ok("更新成功", doc);
     }
 
     @Operation(summary = "删除文档", description = "逻辑删除文档（标记 deleted=1）")
     @DeleteMapping("/{id}")
-    public R<Void> delete(@PathVariable Long id,
-                          @Parameter(hidden = true) @RequestAttribute(CommonConstant.CURRENT_USER) Long userId) {
+    public R<Void> delete(@PathVariable Long id) {
+        Long userId = SecurityUtil.getCurrentUserId();
         documentService.delete(id, userId);
         return R.okMsg("删除成功");
     }
@@ -68,8 +68,8 @@ public class DocumentController {
 
     @Operation(summary = "分页查询文档", description = "按关键词、状态分页查询当前用户的文档列表")
     @GetMapping
-    public R<PageResult<DocumentVO>> queryPage(DocumentQueryRequest request,
-                                                @Parameter(hidden = true) @RequestAttribute(CommonConstant.CURRENT_USER) Long userId) {
+    public R<PageResult<DocumentVO>> queryPage(DocumentQueryRequest request) {
+        Long userId = SecurityUtil.getCurrentUserId();
         PageResult<DocumentVO> result = documentService.queryPage(request, userId);
         return R.ok(result);
     }
@@ -86,8 +86,8 @@ public class DocumentController {
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public R<DocumentVO> uploadFile(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(required = false, defaultValue = "markdown") String contentType,
-            @Parameter(hidden = true) @RequestAttribute(CommonConstant.CURRENT_USER) Long userId) {
+            @RequestParam(required = false, defaultValue = "markdown") String contentType) {
+        Long userId = SecurityUtil.getCurrentUserId();
 
         if (file.isEmpty()) {
             return R.fail(400, "上传文件不能为空");

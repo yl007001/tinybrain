@@ -22,3 +22,7 @@ export function askRAG(question: string, topK: number = 5) {
 export function indexDocument(documentId: number) {
   return http.post(`/rag/index/${documentId}`)
 }
+
+export function getRAGStats() {
+  return http.get('/rag/stats')
+}

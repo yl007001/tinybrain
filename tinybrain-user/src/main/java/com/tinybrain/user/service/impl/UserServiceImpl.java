@@ -9,6 +9,8 @@ import com.tinybrain.user.entity.User;
 import com.tinybrain.user.mapper.UserMapper;
 import com.tinybrain.user.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -68,6 +70,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
+    @Cacheable(value = "users", key = "#userId")
     public UserVO getCurrentUser(Long userId) {
         User user = getById(userId);
         if (user == null) {

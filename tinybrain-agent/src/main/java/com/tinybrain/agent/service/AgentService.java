@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Agent 对话服务
@@ -46,8 +47,8 @@ public class AgentService {
         List<AgentResponse.ToolCall> toolCalls = new ArrayList<>();
         response.setToolCalls(toolCalls);
 
-        // 获取或创建会话历史
-        List<Map<String, String>> history = sessionMemory.computeIfAbsent(sessionId, k -> new ArrayList<>());
+        // 获取或创建会话历史（CopyOnWriteArrayList 保证并发安全）
+        List<Map<String, String>> history = sessionMemory.computeIfAbsent(sessionId, k -> new CopyOnWriteArrayList<>());
 
         // 构建 System Prompt（含工具描述）
         String systemPrompt = agentEngine.buildSystemPrompt();

@@ -25,10 +25,7 @@ spring:
   h2:
     console:
       enabled: false
-  # Elasticsearch
-  elasticsearch:
-    uris: http://elasticsearch:9200
-  # Redis（Gateway 限流用）
+  # Redis（缓存 + Gateway 限流）
   data:
     redis:
       host: redis
