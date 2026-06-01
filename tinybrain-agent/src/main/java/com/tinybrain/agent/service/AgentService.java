@@ -35,7 +35,7 @@ public class AgentService {
     private final ObjectMapper mapper;
 
     /** 会话记忆存储（sessionId → 消息历史） */
-    private final Map<String, List<Map<String, String>>> sessionMemory = new ConcurrentHashMap<>();
+    private final Map<String, List<Map<String, Object>>> sessionMemory = new ConcurrentHashMap<>();
 
     /**
      * 处理 Agent 对话
@@ -48,7 +48,7 @@ public class AgentService {
         response.setToolCalls(toolCalls);
 
         // 获取或创建会话历史（CopyOnWriteArrayList 保证并发安全）
-        List<Map<String, String>> history = sessionMemory.computeIfAbsent(sessionId, k -> new CopyOnWriteArrayList<>());
+        List<Map<String, Object>> history = sessionMemory.computeIfAbsent(sessionId, k -> new CopyOnWriteArrayList<>());
 
         // 构建 System Prompt（含工具描述）
         String systemPrompt = agentEngine.buildSystemPrompt();
@@ -57,14 +57,14 @@ public class AgentService {
         }
 
         // 构建消息列表
-        List<Map<String, String>> messages = new ArrayList<>();
+        List<Map<String, Object>> messages = new ArrayList<>();
         messages.add(Map.of("role", "system", "content", systemPrompt));
         messages.addAll(history);
         messages.add(Map.of("role", "user", "content", request.getMessage()));
 
         // Function Calling 循环
         int iterations = 0;
-        Map<String, String> lastAssistantMsg = null;
+        Map<String, Object> lastAssistantMsg = null;
 
         while (iterations < request.getConfig().getMaxIterations()) {
             iterations++;
@@ -74,8 +74,16 @@ public class AgentService {
             llmRequest.setMessages(messages.stream()
                     .map(m -> {
                         var msg = new com.tinybrain.rag.dto.LLMChatRequest.Message();
-                        msg.setRole(m.get("role"));
-                        msg.setContent(m.get("content"));
+                        msg.setRole((String) m.get("role"));
+                        msg.setContent((String) m.get("content"));
+                        // 处理 tool_calls 字段
+                        if (m.containsKey("tool_calls")) {
+                            msg.setToolCalls((List<Map<String, Object>>) m.get("tool_calls"));
+                        }
+                        // 处理 tool_call_id 字段
+                        if (m.containsKey("tool_call_id")) {
+                            msg.setToolCallId((String) m.get("tool_call_id"));
+                        }
                         return msg;
                     })
                     .toList());
@@ -112,10 +120,26 @@ public class AgentService {
                 String result = agentEngine.executeTool(toolName, argsJson);
                 tc.setResult(result);
 
-                // 将工具调用结果加入消息列表
-                messages.add(lastAssistantMsg);
-                messages.add(Map.of("role", "tool", "content",
-                        String.format("工具 %s 返回: %s", toolName, result)));
+                // 生成 tool_call_id（用于关联工具调用和结果）
+                String toolCallId = "call_" + System.currentTimeMillis();
+
+                // 将 assistant 消息（含 tool_calls）加入消息列表
+                Map<String, Object> assistantMsg = new java.util.HashMap<>();
+                assistantMsg.put("role", "assistant");
+                assistantMsg.put("content", reply);
+                assistantMsg.put("tool_calls", List.of(Map.of(
+                        "id", toolCallId,
+                        "type", "function",
+                        "function", Map.of("name", toolName, "arguments", argsJson)
+                )));
+                messages.add(assistantMsg);
+
+                // 将工具结果加入消息列表（需要 tool_call_id 关联）
+                messages.add(Map.of(
+                        "role", "tool",
+                        "tool_call_id", toolCallId,
+                        "content", result
+                ));
 
             } catch (Exception e) {
                 log.warn("工具调用解析失败: {}", e.getMessage());
@@ -124,7 +148,7 @@ public class AgentService {
         }
 
         // 最终回复
-        String finalReply = (lastAssistantMsg != null) ? lastAssistantMsg.get("content") : "处理完成";
+        String finalReply = (lastAssistantMsg != null) ? (String) lastAssistantMsg.get("content") : "处理完成";
         response.setReply(finalReply);
         response.setIterations(iterations);
 
