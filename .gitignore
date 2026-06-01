@@ -30,4 +30,5 @@ application-prod.yml
 *.local.*
 .env
 .env.*
+!.env.example
 data/
