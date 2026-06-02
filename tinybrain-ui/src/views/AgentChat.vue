@@ -16,6 +16,9 @@
             <button v-for="s in suggestions" :key="s" class="suggestion" @click="userMessage = s">
               {{ s }}
             </button>
+            <button v-for="s in skillSuggestions" :key="s.command" class="suggestion skill-suggestion" @click="userMessage = s.command">
+              ⚡ {{ s.name }}
+            </button>
           </div>
         </div>
 
@@ -35,6 +38,12 @@
                 <span></span><span></span><span></span>
               </div>
               <template v-else>{{ msg.content }}</template>
+            </div>
+            <!-- Matched Skill Badge -->
+            <div v-if="msg.matchedSkill" class="skill-badge">
+              <span class="skill-badge-icon">⚡</span>
+              <span class="skill-badge-name">{{ msg.matchedSkill.name }}</span>
+              <span class="skill-badge-type">{{ msg.matchedSkill.triggerType === 'manual' ? '手动调用' : '自动触发' }}</span>
             </div>
             <!-- Tool Calls -->
             <div v-if="msg.toolCalls && msg.toolCalls.length > 0" class="tool-calls">
@@ -58,7 +67,7 @@
         <div class="input-wrapper">
           <textarea
             v-model="userMessage"
-            placeholder="输入消息，Agent 会自动调用工具..."
+            :placeholder="inputPlaceholder"
             :disabled="chatting"
             @keydown.enter.ctrl="sendMessage"
             @keydown.enter.meta="sendMessage"
@@ -73,10 +82,13 @@
           </button>
         </div>
         <div class="input-footer">
-          <span class="input-hint">Ctrl + Enter 发送</span>
+          <span class="input-hint">Ctrl + Enter 发送 · /skill名 调用技能</span>
           <div class="tools-bar">
             <span v-for="tool in tools" :key="tool.name" class="tool-chip">
-              {{ tool.name }}
+              🔧 {{ tool.name }}
+            </span>
+            <span v-for="skill in skills" :key="skill.id" class="tool-chip skill-chip" @click="userMessage = '/' + skill.name + ' '">
+              ⚡ {{ skill.name }}
             </span>
           </div>
         </div>
@@ -86,9 +98,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { chatWithAgent, getAgentTools, clearSession } from '@/api/agent'
-import type { ToolCall as ToolCallType } from '@/api/agent'
+import type { ToolCall as ToolCallType, SkillMatch } from '@/api/agent'
+import { getSkills } from '@/api/skill'
+import type { SkillInfo } from '@/api/skill'
 
 interface ChatMessage {
   role: 'user' | 'assistant'
@@ -96,6 +110,7 @@ interface ChatMessage {
   loading?: boolean
   toolCalls?: ToolCallType[]
   iterations?: number
+  matchedSkill?: SkillMatch
 }
 
 interface ToolItem {
@@ -113,9 +128,28 @@ const messages = ref<ChatMessage[]>([])
 const userMessage = ref('')
 const chatting = ref(false)
 const tools = ref<ToolItem[]>([])
+const skills = ref<SkillInfo[]>([])
 const sessionId = ref(generateSessionId())
 const messagesRef = ref<HTMLElement>()
 const inputRef = ref<HTMLTextAreaElement>()
+
+// 从已启用的 skills 生成建议（取前 3 个）
+const skillSuggestions = computed(() => {
+  return skills.value
+    .filter(s => s.enabled)
+    .slice(0, 3)
+    .map(s => ({
+      name: s.name,
+      command: `/${s.name} `,
+    }))
+})
+
+const inputPlaceholder = computed(() => {
+  if (skills.value.length > 0) {
+    return `输入消息，或用 /${skills.value[0].name} 调用技能...`
+  }
+  return '输入消息，Agent 会自动调用工具...'
+})
 
 function generateSessionId() {
   return 's_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6)
@@ -152,6 +186,7 @@ async function sendMessage() {
       loadingMsg.content = res.data.reply || '处理完成'
       loadingMsg.toolCalls = res.data.toolCalls || []
       loadingMsg.iterations = res.data.iterations
+      loadingMsg.matchedSkill = res.data.matchedSkill || undefined
     } else {
       loadingMsg.content = 'Agent 暂时无法响应。'
     }
@@ -177,7 +212,19 @@ async function fetchTools() {
   } catch { /* ignore */ }
 }
 
-onMounted(fetchTools)
+async function fetchSkills() {
+  try {
+    const res: any = await getSkills()
+    if (res?.data) {
+      skills.value = res.data.filter((s: SkillInfo) => s.enabled)
+    }
+  } catch { /* ignore */ }
+}
+
+onMounted(() => {
+  fetchTools()
+  fetchSkills()
+})
 </script>
 
 <style scoped>
@@ -477,5 +524,51 @@ onMounted(fetchTools)
   background: var(--color-bg-subtle);
   color: var(--color-text-tertiary);
   border-radius: 9999px;
+}
+
+.tool-chip.skill-chip {
+  cursor: pointer;
+  color: var(--color-accent);
+  background: var(--color-accent-light);
+  transition: all 0.12s ease;
+}
+
+.tool-chip.skill-chip:hover {
+  background: var(--color-accent);
+  color: white;
+}
+
+/* Skill Badge */
+.skill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  margin-bottom: 6px;
+  background: linear-gradient(135deg, #f0f0ff 0%, #e8e8ff 100%);
+  border: 1px solid #d0d0ff;
+  border-radius: 9999px;
+  font-size: 11px;
+}
+
+.skill-badge-icon {
+  font-size: 12px;
+}
+
+.skill-badge-name {
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.skill-badge-type {
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+}
+
+/* Skill suggestion on empty state */
+.suggestion.skill-suggestion {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: var(--color-accent-light);
 }
 </style>

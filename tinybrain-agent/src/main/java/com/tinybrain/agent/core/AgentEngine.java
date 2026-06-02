@@ -5,7 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.tinybrain.agent.plugin.AgentTool;
+import com.tinybrain.agent.plugin.impl.MCPTool;
+import com.tinybrain.mcp.MCPClient;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -34,6 +37,16 @@ public class AgentEngine {
 
     private final Map<String, AgentTool> toolRegistry = new ConcurrentHashMap<>();
     private final ObjectMapper mapper = new ObjectMapper();
+    private MCPClient mcpClient;
+
+    /**
+     * 设置 MCP 客户端
+     */
+    @Autowired(required = false)
+    public void setMcpClient(MCPClient mcpClient) {
+        this.mcpClient = mcpClient;
+        log.info("MCP 客户端已注入");
+    }
 
     /**
      * 注册工具
@@ -48,6 +61,28 @@ public class AgentEngine {
      */
     public void registerTools(List<AgentTool> tools) {
         tools.forEach(this::registerTool);
+    }
+
+    /**
+     * 注册 MCP 工具
+     * <p>
+     * 从 MCP 客户端获取可用工具并注册到 Agent 引擎
+     */
+    public void registerMCPTools() {
+        if (mcpClient == null || !mcpClient.isAlive()) {
+            log.warn("MCP 客户端未初始化或不可用，跳过 MCP 工具注册");
+            return;
+        }
+
+        try {
+            mcpClient.getAvailableTools().forEach(toolDefinition -> {
+                MCPTool mcpTool = new MCPTool(mcpClient, toolDefinition);
+                registerTool(mcpTool);
+            });
+            log.info("MCP 工具注册完成");
+        } catch (Exception e) {
+            log.error("MCP 工具注册失败", e);
+        }
     }
 
     /**

@@ -13,12 +13,20 @@ export interface AgentResponse {
   reply: string
   iterations: number
   toolCalls: ToolCall[]
+  matchedSkill?: SkillMatch
 }
 
 export interface ToolCall {
   toolName: string
   args: string
   result: string
+}
+
+export interface SkillMatch {
+  id: string
+  name: string
+  description: string
+  triggerType: 'manual' | 'auto'
 }
 
 export interface ToolInfo {

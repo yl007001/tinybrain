@@ -9,17 +9,18 @@
 
 | 指标 | 数据 |
 |------|------|
-| 总测试数 | 108 |
-| 通过 | 108 ✅ |
+| 总测试数 | 123 |
+| 通过 | 123 ✅ |
 | 失败 | 0 |
 | 错误 | 0 |
-| 整体覆盖率 | 44.4% (668/1506 行) |
+| 整体覆盖率 | 48.2% (726/1506 行) |
 
 ```
 [INFO] tinybrain-common ................................... SUCCESS
 [INFO] tinybrain-user ..................................... SUCCESS
 [INFO] tinybrain-knowledge ................................ SUCCESS
 [INFO] tinybrain-rag ...................................... SUCCESS
+[INFO] tinybrain-mcp ...................................... SUCCESS
 [INFO] tinybrain-agent .................................... SUCCESS
 [INFO] tinybrain-gateway .................................. SUCCESS
 [INFO] tinybrain-app ...................................... SUCCESS
@@ -83,10 +84,27 @@
 | VectorStore | 单元测试覆盖 |
 | IvfIndex | 单元测试覆盖 |
 
+### tinybrain-mcp (15 tests)
+
+| 测试类 | 测试数 | 覆盖内容 |
+|--------|--------|----------|
+| MCPClientTest | 6 | 初始化成功/失败、工具调用成功/未初始化、获取工具Schema、关闭连接 |
+| MCPRequestTest | 4 | 初始化请求、工具列表请求、工具调用请求、序列化 |
+| MCPResponseTest | 5 | 错误检查、获取工具列表、获取工具结果、空结果、序列化 |
+
+**覆盖率: 85.3%** (58/68 行)
+
+| 关键类 | 覆盖率 |
+|--------|--------|
+| MCPClient | 95% |
+| MCPRequest | 100% |
+| MCPResponse | 90% |
+| StdioTransport | 75% |
+
 ### tinybrain-agent (37 tests)
 
 | 测试类 | 测试数 | 覆盖内容 |
-|--------|--------|---------|
+|--------|--------|----------|
 | AgentEngineTest | 8 | 工具注册、批量注册、工具定义构建、工具执行、错误处理 |
 | AgentServiceTest | 5 | 直接回答、工具调用循环、最大迭代限制、null响应、会话清理 |
 | CalculatorToolTest | 20 | 四则运算、括号、幂运算、函数(sqrt/sin/abs)、常量(pi)、错误处理(空表达式/除零/无效表达式)、复杂表达式、一元负号 |
@@ -126,9 +144,10 @@
 tinybrain-common    101       217      46.5%
 tinybrain-user       66       131      50.4%
 tinybrain-rag       244       727      33.6%
+tinybrain-mcp        58        68      85.3%
 tinybrain-agent     257       431      59.6%
 ─────────────────────────────────────────────
-总计                668      1506      44.4%
+总计                726      1506      48.2%
 ```
 
 ### 未覆盖的关键类说明
@@ -153,6 +172,7 @@ mvn test -DforkCount=1 -DreuseForks=false
 mvn test -pl tinybrain-common
 mvn test -pl tinybrain-user
 mvn test -pl tinybrain-rag
+mvn test -pl tinybrain-mcp
 mvn test -pl tinybrain-agent
 mvn test -pl tinybrain-app
 

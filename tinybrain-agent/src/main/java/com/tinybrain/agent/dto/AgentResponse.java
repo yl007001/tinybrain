@@ -19,10 +19,25 @@ public class AgentResponse {
     /** 总轮数 */
     private int iterations;
 
+    /** 匹配到的 Skill 信息（手动 /skill 或自动触发） */
+    private SkillMatch matchedSkill;
+
     @Data
     public static class ToolCall {
         private String toolName;
         private String args;
         private String result;
+    }
+
+    @Data
+    public static class SkillMatch {
+        /** Skill ID */
+        private String id;
+        /** Skill 名称 */
+        private String name;
+        /** Skill 描述 */
+        private String description;
+        /** 触发方式：manual（/skill 命令）或 auto（自动匹配） */
+        private String triggerType;
     }
 }

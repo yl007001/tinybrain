@@ -96,6 +96,16 @@ const navItems = [
     path: '/agent',
     label: 'AI Agent',
     icon: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 1v2M9 15v2M1 9h2M15 9h2M3.3 3.3l1.4 1.4M13.3 13.3l1.4 1.4M3.3 14.7l1.4-1.4M13.3 4.7l1.4-1.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="9" cy="9" r="3" stroke="currentColor" stroke-width="1.5"/></svg>'
+  },
+  {
+    path: '/mcp',
+    label: 'MCP 管理',
+    icon: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 3h12v12H3z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 7h12M7 7v8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
+  },
+  {
+    path: '/skills',
+    label: 'Skill 管理',
+    icon: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 1l2.5 5 5.5.8-4 3.9.9 5.3L9 13.5 4.1 16l.9-5.3-4-3.9 5.5-.8L9 1z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
   }
 ]
 

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tinybrain.agent.core.AgentEngine;
 import com.tinybrain.agent.dto.AgentRequest;
 import com.tinybrain.agent.dto.AgentResponse;
+import com.tinybrain.agent.dto.SkillInfo;
 import com.tinybrain.rag.service.LLMApiClient;
 import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class AgentService {
     private final AgentEngine agentEngine;
     private final LLMApiClient llmClient;
     private final ObjectMapper mapper;
+    private final SkillService skillService;
 
     /** 会话记忆存储（sessionId → 消息历史） */
     private final Map<String, List<Map<String, Object>>> sessionMemory = new ConcurrentHashMap<>();
@@ -54,6 +56,50 @@ public class AgentService {
         String systemPrompt = agentEngine.buildSystemPrompt();
         if (!request.getConfig().getSystemPromptSuffix().isEmpty()) {
             systemPrompt += "\n" + request.getConfig().getSystemPromptSuffix();
+        }
+
+        // === Skill 集成：手动 /skill 命令 + 自动触发匹配 ===
+        String userMessage = request.getMessage();
+        SkillInfo matchedSkill = null;
+        String triggerType = null;
+
+        // 1. 检查 /skill-name 手动调用
+        if (userMessage.startsWith("/")) {
+            matchedSkill = matchSkillByCommand(userMessage);
+            if (matchedSkill != null) {
+                triggerType = "manual";
+                // 移除 /skill-name 前缀，保留实际问题
+                String actualMessage = stripSkillCommand(userMessage);
+                if (!actualMessage.isBlank()) {
+                    request.setMessage(actualMessage);
+                    userMessage = actualMessage;
+                }
+                log.info("用户手动调用 Skill: {} (/{})", matchedSkill.getName(), matchedSkill.getName());
+            }
+        }
+
+        // 2. 自动触发匹配（仅在未手动指定时）
+        if (matchedSkill == null) {
+            matchedSkill = matchSkillByTriggers(userMessage);
+            if (matchedSkill != null) {
+                triggerType = "auto";
+                log.info("Skill 自动触发: {} (匹配消息: {})", matchedSkill.getName(), userMessage);
+            }
+        }
+
+        // 3. 注入 Skill 上下文到 System Prompt
+        if (matchedSkill != null) {
+            systemPrompt += "\n" + buildSkillContext(matchedSkill);
+        }
+
+        // 4. 设置响应中的 Skill 匹配信息
+        if (matchedSkill != null) {
+            AgentResponse.SkillMatch sm = new AgentResponse.SkillMatch();
+            sm.setId(matchedSkill.getId());
+            sm.setName(matchedSkill.getName());
+            sm.setDescription(matchedSkill.getDescription());
+            sm.setTriggerType(triggerType);
+            response.setMatchedSkill(sm);
         }
 
         // 构建消息列表
@@ -238,5 +284,112 @@ public class AgentService {
      */
     public void clearSession(String sessionId) {
         sessionMemory.remove(sessionId);
+    }
+
+    // ========== Skill 集成方法 ==========
+
+    /**
+     * 通过 /skill-name 命令匹配 Skill
+     * 支持格式：/skill-name 或 /skill-name 实际问题内容
+     */
+    private SkillInfo matchSkillByCommand(String message) {
+        // 提取 / 后面的第一个词作为 skill name
+        String trimmed = message.substring(1).trim(); // 去掉 /
+        String skillName;
+        int spaceIdx = trimmed.indexOf(' ');
+        if (spaceIdx > 0) {
+            skillName = trimmed.substring(0, spaceIdx);
+        } else {
+            skillName = trimmed;
+        }
+
+        if (skillName.isBlank()) return null;
+
+        // 精确匹配 skill name（不区分大小写）
+        for (SkillInfo skill : skillService.listSkills()) {
+            if (skill.isEnabled() && skill.getName().equalsIgnoreCase(skillName)) {
+                return skill;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 移除消息中的 /skill-name 前缀，返回实际问题
+     */
+    private String stripSkillCommand(String message) {
+        String trimmed = message.substring(1).trim();
+        int spaceIdx = trimmed.indexOf(' ');
+        if (spaceIdx > 0) {
+            return trimmed.substring(spaceIdx + 1).trim();
+        }
+        // 只有 /skill-name 没有后续内容，返回空（让 LLM 根据 skill 上下文自行发挥）
+        return "";
+    }
+
+    /**
+     * 通过触发条件自动匹配 Skill
+     * 遍历所有已启用的 Skill，检查 triggers 中的关键词是否出现在用户消息中
+     */
+    private SkillInfo matchSkillByTriggers(String message) {
+        String lowerMessage = message.toLowerCase();
+        SkillInfo bestMatch = null;
+        int bestPriority = Integer.MIN_VALUE;
+
+        for (SkillInfo skill : skillService.listSkills()) {
+            if (!skill.isEnabled() || skill.getTriggers() == null || skill.getTriggers().isEmpty()) {
+                continue;
+            }
+
+            for (String trigger : skill.getTriggers()) {
+                if (trigger != null && lowerMessage.contains(trigger.toLowerCase().trim())) {
+                    // 匹配到触发条件，取优先级最高的
+                    if (skill.getPriority() > bestPriority) {
+                        bestPriority = skill.getPriority();
+                        bestMatch = skill;
+                    }
+                    break; // 一个 skill 只要有一个 trigger 匹配就够了
+                }
+            }
+        }
+
+        return bestMatch;
+    }
+
+    /**
+     * 构建 Skill 上下文注入到 System Prompt
+     * 告知 LLM 当前激活了哪个 Skill，以及应该使用哪个工具、如何使用
+     */
+    private String buildSkillContext(SkillInfo skill) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("\n## [Active Skill: ").append(skill.getName()).append("]\n");
+        sb.append("Description: ").append(skill.getDescription()).append("\n");
+
+        if (skill.getToolName() != null && !skill.getToolName().isBlank()) {
+            sb.append("Primary Tool: ").append(skill.getToolName()).append("\n");
+        }
+
+        if (skill.getToolDescription() != null && !skill.getToolDescription().isBlank()) {
+            sb.append("Tool Usage: ").append(skill.getToolDescription()).append("\n");
+        }
+
+        if (skill.getParametersSchema() != null && !skill.getParametersSchema().isBlank()) {
+            sb.append("Parameters: ").append(skill.getParametersSchema()).append("\n");
+        }
+
+        if (skill.getTags() != null && !skill.getTags().isEmpty()) {
+            sb.append("Tags: ").append(String.join(", ", skill.getTags())).append("\n");
+        }
+
+        sb.append("\nInstruction: You are currently operating under the \"")
+          .append(skill.getName()).append("\" skill. ")
+          .append("Focus your response on this skill's domain. ");
+
+        if (skill.getToolName() != null && !skill.getToolName().isBlank()) {
+            sb.append("Use the \"").append(skill.getToolName())
+              .append("\" tool when appropriate to fulfill the user's request within this skill's scope.\n");
+        }
+
+        return sb.toString();
     }
 }

@@ -4,6 +4,8 @@ import Dashboard from '@/views/Dashboard.vue'
 import Documents from '@/views/Documents.vue'
 import RAGChat from '@/views/RAGChat.vue'
 import AgentChat from '@/views/AgentChat.vue'
+import McpManager from '@/views/McpManager.vue'
+import SkillManager from '@/views/SkillManager.vue'
 
 const routes = [
   {
@@ -40,6 +42,18 @@ const routes = [
         name: 'AgentChat',
         component: AgentChat,
         meta: { title: 'AI Agent' },
+      },
+      {
+        path: 'mcp',
+        name: 'McpManager',
+        component: McpManager,
+        meta: { title: 'MCP 管理' },
+      },
+      {
+        path: 'skills',
+        name: 'SkillManager',
+        component: SkillManager,
+        meta: { title: 'Skill 管理' },
       },
     ],
   },
