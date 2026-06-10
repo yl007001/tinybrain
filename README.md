@@ -1,7 +1,7 @@
 <div align="center">
   <h1>🧠 TinyBrain</h1>
   <p><strong>Personal AI Knowledge Engine</strong></p>
-  <p>Spring Boot 3.x · RAG · Agent · Microservices · Observability</p>
+  <p>Spring Boot 3.x · RAG · Agent · MCP · Skill · Microservices · Observability</p>
 
   <p>
     <a href="./LICENSE">
@@ -48,6 +48,8 @@
 | 📚 **Knowledge Base** | Document CRUD with MyBatis-Plus, Markdown/text support, file upload |
 | 🔍 **RAG Search** | Document chunking → vectorization → semantic search → LLM-augmented answering |
 | 🤖 **AI Agent** | Function Calling (手写 AgentEngine + JSON Schema 解析), tool plugins (calculator, datetime, knowledge search, web search) |
+| 🔌 **MCP Protocol** | JSON-RPC 2.0 over stdio transport, runtime MCP server management, auto tool discovery and registration |
+| 🧩 **Skill System** | Skill CRUD, distillation (from conversation/document/code), keyword auto-trigger, skill marketplace, Skill-Agent integration |
 | 🚪 **API Gateway** | Spring Cloud Gateway, JWT global filter, routing, CORS |
 | 📊 **Observability** | Prometheus + Grafana dashboards, Zipkin distributed tracing, structured JSON logging |
 | 🐳 **Docker** | One-command `docker-compose up` for full stack deployment |
@@ -64,18 +66,18 @@
 ┌──────────────────────▼──────────────────────────────────────┐
 │  API Gateway: Spring Cloud Gateway                          │
 │     JWT Auth · Routing · Rate Limiting · CORS               │
-└──────┬─────────┬─────────┬─────────┬────────────────────────┘
-       │         │         │         │
-┌──────▼──┐ ┌───▼────┐ ┌──▼────┐ ┌─▼────────┐
-│  User   │ │Knowledge│ │ RAG   │ │  Agent   │
-│ Service │ │ Service │ │Service│ │ Service  │
-│         │ │         │ │      │ │          │
-│ JWT Auth│ │Doc CRUD │ │Vector│ │Function  │
-│ RBAC    │ │Upload   │ │Search│ │Calling   │
-│         │ │    │    │ │LLM   │ │Plugins   │
-└──┬──────┘ └──┬─────┘ └──┬────┘ └──┬───────┘
-   │           │          │         │
-   └───────────┴──────────┴─────────┘
+└──────┬─────────┬─────────┬─────────┬─────────┬─────────────┘
+       │         │         │         │         │
+┌──────▼──┐ ┌───▼────┐ ┌──▼────┐ ┌─▼────────┐ ┌─▼──────┐
+│  User   │ │Knowledge│ │ RAG   │ │  Agent   │ │  MCP   │
+│ Service │ │ Service │ │Service│ │ Service  │ │ Module │
+│         │ │         │ │      │ │          │ │        │
+│ JWT Auth│ │Doc CRUD │ │Vector│ │Function  │ │JSON-RPC│
+│ RBAC    │ │Upload   │ │Search│ │Calling   │ │stdio   │
+│         │ │    │    │ │LLM   │ │Skill Sys │ │Tool    │
+└──┬──────┘ └──┬─────┘ └──┬────┘ └──┬───────┘ │Discover│
+   │           │          │         │         └──┬─────┘
+   └───────────┴──────────┴─────────┴────────────┘
                │
      ┌─────────▼──────────────┐
      │  Common Module          │
@@ -109,7 +111,7 @@
 <a id="project-intro"></a>
 ## 📖 项目介绍
 
-**TinyBrain** 是一个基于 **Spring Boot 3.x** + **Spring Cloud Alibaba** 的个人 AI 知识引擎，集成了 **RAG 检索增强生成**和 **Agent 智能体**能力。
+**TinyBrain** 是一个基于 **Spring Boot 3.x** + **Spring Cloud Alibaba** 的个人 AI 知识引擎，集成了 **RAG 检索增强生成**、**Agent 智能体**、**MCP 协议**和 **Skill 技能系统**。
 
 ### ✨ 功能特性
 
@@ -117,6 +119,8 @@
 - 📚 **知识库管理** — 文档 CRUD、Markdown/文本支持、文件上传
 - 🔍 **RAG 智能问答** — 文档分块 → 向量化 → 语义检索 → LLM 增强回答
 - 🤖 **AI Agent** — Function Calling 工具调用（计算器、时间日期、知识搜索、网络搜索）
+- 🔌 **MCP 协议** — JSON-RPC 2.0 over stdio，运行时 MCP 服务器管理，工具自动发现与注册
+- 🧩 **Skill 技能系统** — 技能 CRUD、从对话/文档/代码中蒸馏技能、关键词自动触发、技能市场、Skill-Agent 联动
 - 🚪 **API 网关** — Spring Cloud Gateway、JWT 全局鉴权、路由转发、CORS
 - 📊 **可观测性** — Prometheus + Grafana 大盘、Zipkin 链路追踪、JSON 结构化日志
 - 🐳 **Docker 部署** — `docker-compose up` 一键启动全套服务
@@ -134,16 +138,16 @@
 ┌──────────────────────▼──────────────────────────────────────┐
 │  API 网关: Spring Cloud Gateway                              │
 │     JWT 鉴权 · 路由转发 · 限流 · CORS                        │
-└──────┬─────────┬─────────┬─────────┬────────────────────────┘
-       │         │         │         │
-┌──────▼──┐ ┌───▼────┐ ┌──▼────┐ ┌─▼────────┐
-│ 用户模块 │ │知识库模块│ │RAG模块│ │Agent模块  │
-│ JWT认证  │ │文档CRUD │ │向量化 │ │Function  │
-│ RBAC权限 │ │文件上传 │ │语义检索│ │Calling   │
-│         │ │        │ │LLM增强│ │工具插件  │
-└──┬──────┘ └──┬─────┘ └──┬────┘ └──┬───────┘
-   │           │          │         │
-   └───────────┴──────────┴─────────┘
+└──────┬─────────┬─────────┬─────────┬─────────┬─────────────┘
+       │         │         │         │         │
+┌──────▼──┐ ┌───▼────┐ ┌──▼────┐ ┌─▼────────┐ ┌─▼──────┐
+│ 用户模块 │ │知识库模块│ │RAG模块│ │Agent模块  │ │MCP模块  │
+│ JWT认证  │ │文档CRUD │ │向量化 │ │Function  │ │JSON-RPC│
+│ RBAC权限 │ │文件上传 │ │语义检索│ │Calling   │ │stdio   │
+│         │ │        │ │LLM增强│ │Skill技能  │ │工具发现 │
+└──┬──────┘ └──┬─────┘ └──┬────┘ └──┬───────┘ └──┬─────┘
+   │           │          │         │            │
+   └───────────┴──────────┴─────────┴────────────┘
                │
      ┌─────────▼──────────────┐
      │  基础模块: tinybrain-common │
@@ -272,6 +276,18 @@ mvn spring-boot:run
 | RAG | GET | `/api/rag/ask` | RAG question answering |
 | Agent | POST | `/api/agent/chat` | Agent conversation |
 | Agent | GET | `/api/agent/tools` | List available tools |
+| MCP | POST | `/api/mcp/servers` | Add MCP server |
+| MCP | GET | `/api/mcp/servers` | List MCP servers |
+| MCP | PUT | `/api/mcp/servers/{id}` | Update MCP server |
+| MCP | DELETE | `/api/mcp/servers/{id}` | Delete MCP server |
+| MCP | POST | `/api/mcp/servers/{id}/invoke` | Invoke MCP tool |
+| Skill | POST | `/api/skills` | Create skill |
+| Skill | GET | `/api/skills` | List skills |
+| Skill | PUT | `/api/skills/{id}` | Update skill |
+| Skill | DELETE | `/api/skills/{id}` | Delete skill |
+| Skill | POST | `/api/skills/distill` | Distill skill from source |
+| Skill | POST | `/api/skills/{id}/toggle` | Toggle skill enabled/disabled |
+| Skill | GET | `/api/skills/marketplace` | Skill marketplace |
 
 > 📋 完整测试报告见 [TEST-REPORT.md](./TEST-REPORT.md)
 
@@ -287,7 +303,8 @@ tinybrain/
 ├── tinybrain-user         # User module (auth, JWT, RBAC)
 ├── tinybrain-knowledge    # Knowledge base (document CRUD)
 ├── tinybrain-rag          # RAG module (vectorization, semantic search, LLM)
-├── tinybrain-agent        # Agent module (Function Calling, tool plugins)
+├── tinybrain-agent        # Agent module (Function Calling, Skill system, tool plugins)
+├── tinybrain-mcp          # MCP module (JSON-RPC 2.0, stdio transport, tool discovery)
 ├── tinybrain-ui           # Vue 3 frontend (optional)
 ├── docs/                  # Educational documentation
 ├── deploy/                # Deployment configs (Prometheus, Grafana)
@@ -354,6 +371,8 @@ TinyBrain is designed as a **comprehensive portfolio project** for Java backend 
 - JWT authentication, Spring Security, RBAC
 - RAG: Document chunking, vector embedding, semantic search, LLM prompting
 - Agent: Function Calling architecture, tool plugin system, multi-turn conversation
+- MCP: JSON-RPC 2.0 over stdio, runtime server management, tool auto-discovery
+- Skill: Skill CRUD, distillation from conversation/document/code, keyword auto-trigger, marketplace
 - Spring Cloud Gateway, Nacos service discovery
 - Observability: Prometheus, Grafana, Zipkin, structured logging
 - Containerization: Docker, multi-stage builds, health checks
