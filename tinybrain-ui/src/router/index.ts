@@ -32,13 +32,13 @@ const routes = [
         meta: { title: '知识库' },
       },
       {
-        path: 'rag',
+        path: 'rag/:sessionId?',
         name: 'RAGChat',
         component: RAGChat,
         meta: { title: 'RAG 问答' },
       },
       {
-        path: 'agent',
+        path: 'agent/:sessionId?',
         name: 'AgentChat',
         component: AgentChat,
         meta: { title: 'AI Agent' },

@@ -4,7 +4,7 @@
 
 ### ✅ 任务一：知识点文档
 
-已创建以下文档到 `docs/phase2/` 目录：
+已创建以下文档到 `docs/进阶功能文档/` 目录：
 
 1. **07-Skill技能系统实现.md** - 解释 Skill 概念、AgentTool 接口、如何自定义 Skill
 2. **08-MCP协议集成.md** - 解释 MCP 协议定义、架构、通信协议、集成方案
@@ -71,9 +71,9 @@ tinybrain-app       29         -         -         -
 ## 新增文件列表
 
 ### 文档文件
-- `docs/phase2/07-Skill技能系统实现.md`
-- `docs/phase2/08-MCP协议集成.md`
-- `docs/phase2/09-Agent智能体深度解析.md`
+- `docs/进阶功能文档/07-Skill技能系统实现.md`
+- `docs/进阶功能文档/08-MCP协议集成.md`
+- `docs/进阶功能文档/09-Agent智能体深度解析.md`
 
 ### MCP 模块文件
 - `tinybrain-mcp/pom.xml`

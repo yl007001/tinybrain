@@ -3,7 +3,7 @@ import { ElMessage } from 'element-plus'
 
 const http = axios.create({
   baseURL: '/api',
-  timeout: 30000,
+  timeout: 120000,  // Agent 调用多个工具可能需要较长时间
 })
 
 // 请求拦截器 - 注入 JWT Token

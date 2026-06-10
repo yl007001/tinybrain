@@ -30,15 +30,15 @@
 ### 第一阶段：知识点文档创建（任务一）
 
 1. **创建 skill 知识点文档**
-   - 文件：`docs/phase2/07-Skill技能系统实现.md`
+   - 文件：`docs/进阶功能文档/07-Skill技能系统实现.md`
    - 内容：skill 概念、在项目中的应用、AgentTool 接口解析
 
 2. **创建 MCP 知识点文档**
-   - 文件：`docs/phase2/08-MCP协议集成.md`
+   - 文件：`docs/进阶功能文档/08-MCP协议集成.md`
    - 内容：MCP 协议定义、架构、在项目中的集成方案
 
 3. **创建 Agent 知识点文档**
-   - 文件：`docs/phase2/09-Agent智能体深度解析.md`
+   - 文件：`docs/进阶功能文档/09-Agent智能体深度解析.md`
    - 内容：Agent 架构、Function Calling 原理、ReAct 模式
 
 ### 第二阶段：概念实现（任务二）
@@ -94,9 +94,9 @@
 ## 关键文件
 
 ### 需要创建的文件
-1. `docs/phase2/07-Skill技能系统实现.md`
-2. `docs/phase2/08-MCP协议集成.md`
-3. `docs/phase2/09-Agent智能体深度解析.md`
+1. `docs/进阶功能文档/07-Skill技能系统实现.md`
+2. `docs/进阶功能文档/08-MCP协议集成.md`
+3. `docs/进阶功能文档/09-Agent智能体深度解析.md`
 4. `tinybrain-mcp/` - MCP 集成模块
 
 ### 需要修改的文件

@@ -33,6 +33,13 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- Spring Security (for SecurityContextHolder) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

@@ -1,14 +1,15 @@
 package com.tinybrain.agent.controller;
 
 import com.tinybrain.agent.dto.SkillConfig;
-import com.tinybrain.agent.dto.SkillInfo;
 import com.tinybrain.agent.dto.SkillDistillRequest;
+import com.tinybrain.agent.dto.SkillInfo;
 import com.tinybrain.agent.service.SkillService;
 import com.tinybrain.common.response.R;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -42,7 +43,8 @@ public class SkillController {
     @Operation(summary = "创建 Skill", description = "手动创建一个新的 Skill")
     @PostMapping("/create")
     public R<SkillInfo> createSkill(@Valid @RequestBody SkillConfig config) {
-        return R.ok(skillService.createSkill(config));
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return R.ok(skillService.createSkill(config, userId));
     }
 
     @Operation(summary = "更新 Skill", description = "更新指定 Skill 的配置")
@@ -67,14 +69,16 @@ public class SkillController {
     @Operation(summary = "蒸馏 Skill", description = "从对话历史或文档中蒸馏出一个新的 Skill")
     @PostMapping("/distill")
     public R<SkillInfo> distillSkill(@Valid @RequestBody SkillDistillRequest request) {
-        return R.ok(skillService.distillSkill(request));
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return R.ok(skillService.distillSkill(request, userId));
     }
 
     @Operation(summary = "安装 Skill", description = "从 Skill 市场安装一个 Skill")
     @PostMapping("/install")
     public R<SkillInfo> installSkill(@RequestBody Map<String, String> request) {
         String skillId = request.get("skillId");
-        return R.ok(skillService.installSkill(skillId));
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return R.ok(skillService.installSkill(skillId, userId));
     }
 
     @Operation(summary = "获取 Skill 市场列表", description = "获取可用的 Skill 市场列表")

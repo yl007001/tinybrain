@@ -1,27 +1,29 @@
 package com.tinybrain.agent.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.tinybrain.agent.core.AgentEngine;
 import com.tinybrain.agent.dto.SkillConfig;
 import com.tinybrain.agent.dto.SkillDistillRequest;
 import com.tinybrain.agent.dto.SkillInfo;
+import com.tinybrain.agent.entity.Skill;
+import com.tinybrain.agent.mapper.SkillMapper;
 import com.tinybrain.agent.plugin.AgentTool;
+import com.tinybrain.rag.dto.LLMChatRequest;
 import com.tinybrain.rag.service.LLMApiClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import jakarta.annotation.PostConstruct;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Skill 管理服务
  * <p>
- * 管理 Skill 的创建、编辑、删除、蒸馏等功能。
+ * 管理 Skill 的创建、编辑、删除、蒸馏等功能。数据持久化到数据库。
  */
 @Slf4j
 @Service
@@ -30,200 +32,194 @@ public class SkillService {
 
     private final AgentEngine agentEngine;
     private final LLMApiClient llmClient;
-    private final ObjectMapper mapper;
+    private final ObjectMapper objectMapper;
+    private final SkillMapper skillMapper;
+
+    // ========== 初始化 ==========
 
     /**
-     * Skill 存储（id -> info）
+     * 启动时初始化内置 Skill 和市场 Skill
      */
-    private final Map<String, SkillInfo> skillStore = new ConcurrentHashMap<>();
-
-    /**
-     * Skill 市场（预置的可用 Skill）
-     */
-    private final Map<String, SkillInfo> marketSkills = new ConcurrentHashMap<>();
-
-    /**
-     * 应用启动后自动初始化
-     */
-    @EventListener(ApplicationReadyEvent.class)
-    public void onApplicationReady() {
-        initBuiltinSkills();
-    }
-
-    /**
-     * 初始化预置 Skill
-     */
+    @PostConstruct
     public void initBuiltinSkills() {
-        // 注册内置工具为 Skill
-        Map<String, AgentTool> tools = agentEngine.getTools();
-        for (Map.Entry<String, AgentTool> entry : tools.entrySet()) {
-            SkillInfo info = new SkillInfo();
-            info.setId("builtin_" + entry.getKey());
-            info.setName(entry.getKey());
-            info.setDescription(entry.getValue().getDescription());
-            info.setType("builtin");
-            info.setToolName(entry.getKey());
-            info.setToolDescription(entry.getValue().getDescription());
-            info.setEnabled(true);
-            info.setSource("builtin");
-            info.setVersion("1.0.0");
-            info.setAuthor("TinyBrain");
-            info.setCreatedAt(LocalDateTime.now());
-            info.setUpdatedAt(LocalDateTime.now());
-            skillStore.put(info.getId(), info);
+        // 检查数据库是否已有 builtin 技能
+        LambdaQueryWrapper<Skill> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Skill::getType, "builtin");
+        Long count = skillMapper.selectCount(wrapper);
+
+        if (count > 0) {
+            log.info("数据库已有 {} 个内置 Skill，跳过初始化", count);
+        } else {
+            // 注册内置工具为 Skill
+            Map<String, AgentTool> tools = agentEngine.getTools();
+            for (Map.Entry<String, AgentTool> entry : tools.entrySet()) {
+                Skill skill = new Skill();
+                skill.setSkillId(UUID.randomUUID().toString());
+                skill.setName(entry.getKey());
+                skill.setDescription(entry.getValue().getDescription());
+                skill.setType("builtin");
+                skill.setToolName(entry.getKey());
+                skill.setToolDescription(entry.getValue().getDescription());
+                skill.setEnabled(1);
+                skill.setSource("builtin");
+                skill.setVersion("1.0.0");
+                skill.setAuthor("TinyBrain");
+                skill.setUserId(1L); // 系统内置，归属 admin
+                skillMapper.insert(skill);
+            }
+            log.info("初始化 {} 个内置 Skill", tools.size());
         }
 
-        // 初始化 Skill 市场
+        // 初始化市场 Skill
         initMarketSkills();
     }
 
     /**
-     * 初始化 Skill 市场
+     * 初始化市场 Skill
      */
     private void initMarketSkills() {
-        // 预置一些示例 Skill
+        LambdaQueryWrapper<Skill> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Skill::getSource, "marketplace");
+        Long count = skillMapper.selectCount(wrapper);
+
+        if (count > 0) {
+            log.info("数据库已有 {} 个市场 Skill，跳过初始化", count);
+            return;
+        }
+
         addMarketSkill("web_scraper", "网页抓取", "抓取网页内容并提取关键信息", "web_search");
         addMarketSkill("data_analyzer", "数据分析", "分析数据并生成统计报告", "calculator");
         addMarketSkill("code_generator", "代码生成", "根据需求生成代码片段", "knowledge_search");
         addMarketSkill("translator", "翻译助手", "多语言翻译工具", "web_search");
         addMarketSkill("summarizer", "摘要生成", "生成文档或对话的摘要", "knowledge_search");
+
+        log.info("初始化 5 个市场 Skill");
     }
 
     /**
      * 添加市场 Skill
      */
     private void addMarketSkill(String id, String name, String description, String toolName) {
-        SkillInfo info = new SkillInfo();
-        info.setId(id);
-        info.setName(name);
-        info.setDescription(description);
-        info.setType("market");
-        info.setToolName(toolName);
-        info.setToolDescription(description);
-        info.setEnabled(true);
-        info.setSource("market");
-        info.setVersion("1.0.0");
-        info.setAuthor("TinyBrain");
-        info.setDownloads((int) (Math.random() * 1000));
-        info.setRating(4.0 + Math.random() * 1.0);
-        info.setCreatedAt(LocalDateTime.now());
-        info.setUpdatedAt(LocalDateTime.now());
-        marketSkills.put(id, info);
+        Skill skill = new Skill();
+        skill.setSkillId(id);
+        skill.setName(name);
+        skill.setDescription(description);
+        skill.setType("market");
+        skill.setToolName(toolName);
+        skill.setToolDescription(description);
+        skill.setEnabled(1);
+        skill.setSource("marketplace");
+        skill.setVersion("1.0.0");
+        skill.setAuthor("TinyBrain");
+        skill.setUserId(1L); // 系统内置，归属 admin
+        skillMapper.insert(skill);
     }
+
+    // ========== 公开 API ==========
 
     /**
      * 获取所有 Skill
      */
     public List<SkillInfo> listSkills() {
-        return new ArrayList<>(skillStore.values());
+        List<Skill> skills = skillMapper.selectList(null);
+        List<SkillInfo> result = new ArrayList<>();
+        for (Skill skill : skills) {
+            result.add(toInfo(skill));
+        }
+        return result;
     }
 
     /**
      * 获取 Skill 详情
      */
-    public SkillInfo getSkill(String id) {
-        SkillInfo info = skillStore.get(id);
-        if (info == null) {
-            throw new RuntimeException("Skill 不存在: " + id);
-        }
-        return info;
+    public SkillInfo getSkill(String skillId) {
+        Skill skill = getBySkillId(skillId);
+        return toInfo(skill);
     }
 
     /**
      * 创建 Skill
      */
-    public SkillInfo createSkill(SkillConfig config) {
-        String id = UUID.randomUUID().toString().substring(0, 8);
+    public SkillInfo createSkill(SkillConfig config, Long userId) {
+        String skillId = UUID.randomUUID().toString();
 
-        SkillInfo info = new SkillInfo();
-        info.setId(id);
-        info.setName(config.getName());
-        info.setDescription(config.getDescription());
-        info.setType(config.getType());
-        info.setToolName(config.getToolName());
-        info.setToolDescription(config.getToolDescription());
-        info.setParametersSchema(config.getParametersSchema());
-        info.setTriggers(config.getTriggers());
-        info.setConfig(config.getConfig());
-        info.setEnabled(config.isEnabled());
-        info.setPriority(config.getPriority());
-        info.setTags(config.getTags());
-        info.setSource("custom");
-        info.setVersion("1.0.0");
-        info.setAuthor("User");
-        info.setCreatedAt(LocalDateTime.now());
-        info.setUpdatedAt(LocalDateTime.now());
+        Skill skill = new Skill();
+        skill.setSkillId(skillId);
+        skill.setName(config.getName());
+        skill.setDescription(config.getDescription());
+        skill.setType(config.getType());
+        skill.setToolName(config.getToolName());
+        skill.setToolDescription(config.getToolDescription());
+        skill.setParametersSchema(config.getParametersSchema());
+        skill.setTriggers(toJson(config.getTriggers()));
+        skill.setConfig(toJson(config.getConfig()));
+        skill.setEnabled(config.isEnabled() ? 1 : 0);
+        skill.setPriority(config.getPriority());
+        skill.setTags(toJson(config.getTags()));
+        skill.setSource("custom");
+        skill.setVersion("1.0.0");
+        skill.setAuthor("User");
+        skill.setUserId(userId);
 
-        skillStore.put(id, info);
-        log.info("Skill 创建成功: {} - {}", info.getName(), info.getId());
-        return info;
+        skillMapper.insert(skill);
+        log.info("Skill 创建成功: {} - {}", skill.getName(), skill.getSkillId());
+        return toInfo(skill);
     }
 
     /**
      * 更新 Skill
      */
-    public SkillInfo updateSkill(String id, SkillConfig config) {
-        SkillInfo info = skillStore.get(id);
-        if (info == null) {
-            throw new RuntimeException("Skill 不存在: " + id);
-        }
+    public SkillInfo updateSkill(String skillId, SkillConfig config) {
+        Skill skill = getBySkillId(skillId);
 
-        info.setName(config.getName());
-        info.setDescription(config.getDescription());
-        info.setType(config.getType());
-        info.setToolName(config.getToolName());
-        info.setToolDescription(config.getToolDescription());
-        info.setParametersSchema(config.getParametersSchema());
-        info.setTriggers(config.getTriggers());
-        info.setConfig(config.getConfig());
-        info.setEnabled(config.isEnabled());
-        info.setPriority(config.getPriority());
-        info.setTags(config.getTags());
-        info.setUpdatedAt(LocalDateTime.now());
+        skill.setName(config.getName());
+        skill.setDescription(config.getDescription());
+        skill.setType(config.getType());
+        skill.setToolName(config.getToolName());
+        skill.setToolDescription(config.getToolDescription());
+        skill.setParametersSchema(config.getParametersSchema());
+        skill.setTriggers(toJson(config.getTriggers()));
+        skill.setConfig(toJson(config.getConfig()));
+        skill.setEnabled(config.isEnabled() ? 1 : 0);
+        skill.setPriority(config.getPriority());
+        skill.setTags(toJson(config.getTags()));
 
-        log.info("Skill 更新成功: {} - {}", info.getName(), info.getId());
-        return info;
+        skillMapper.updateById(skill);
+        log.info("Skill 更新成功: {} - {}", skill.getName(), skill.getSkillId());
+        return toInfo(skill);
     }
 
     /**
      * 删除 Skill
      */
-    public void deleteSkill(String id) {
-        SkillInfo info = skillStore.remove(id);
-        if (info == null) {
-            throw new RuntimeException("Skill 不存在: " + id);
-        }
-        log.info("Skill 删除成功: {} - {}", info.getName(), info.getId());
+    public void deleteSkill(String skillId) {
+        Skill skill = getBySkillId(skillId);
+        skillMapper.deleteById(skill.getId());
+        log.info("Skill 删除成功: {} - {}", skill.getName(), skill.getSkillId());
     }
 
     /**
      * 启用/禁用 Skill
      */
-    public SkillInfo toggleSkill(String id) {
-        SkillInfo info = skillStore.get(id);
-        if (info == null) {
-            throw new RuntimeException("Skill 不存在: " + id);
-        }
-
-        info.setEnabled(!info.isEnabled());
-        info.setUpdatedAt(LocalDateTime.now());
-
-        log.info("Skill {} 已{}", info.getName(), info.isEnabled() ? "启用" : "禁用");
-        return info;
+    public SkillInfo toggleSkill(String skillId) {
+        Skill skill = getBySkillId(skillId);
+        skill.setEnabled(skill.getEnabled() == 1 ? 0 : 1);
+        skillMapper.updateById(skill);
+        log.info("Skill {} 已{}", skill.getName(), skill.getEnabled() == 1 ? "启用" : "禁用");
+        return toInfo(skill);
     }
 
     /**
      * 蒸馏 Skill
      */
-    public SkillInfo distillSkill(SkillDistillRequest request) {
-        // 使用 LLM 从内容中提取 Skill 定义
+    public SkillInfo distillSkill(SkillDistillRequest request, Long userId) {
         String prompt = buildDistillPrompt(request);
 
         try {
             // 调用 LLM 进行蒸馏
-            com.tinybrain.rag.dto.LLMChatRequest llmRequest = new com.tinybrain.rag.dto.LLMChatRequest();
-            List<com.tinybrain.rag.dto.LLMChatRequest.Message> messages = new ArrayList<>();
-            com.tinybrain.rag.dto.LLMChatRequest.Message msg = new com.tinybrain.rag.dto.LLMChatRequest.Message();
+            LLMChatRequest llmRequest = new LLMChatRequest();
+            List<LLMChatRequest.Message> messages = new ArrayList<>();
+            LLMChatRequest.Message msg = new LLMChatRequest.Message();
             msg.setRole("user");
             msg.setContent(prompt);
             messages.add(msg);
@@ -237,16 +233,118 @@ public class SkillService {
             SkillConfig config = parseDistillResponse(response, request);
 
             // 创建 Skill
-            SkillInfo info = createSkill(config);
-            info.setSource("distilled");
-            info.setUpdatedAt(LocalDateTime.now());
+            SkillInfo info = createSkill(config, userId);
+
+            // 更新 source 为 distilled
+            Skill skill = getBySkillId(info.getId());
+            skill.setSource("distilled");
+            skillMapper.updateById(skill);
 
             log.info("Skill 蒸馏成功: {} - {}", info.getName(), info.getId());
-            return info;
+            return toInfo(skill);
         } catch (Exception e) {
             log.error("Skill 蒸馏失败", e);
             throw new RuntimeException("Skill 蒸馏失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 获取 Skill 市场列表
+     */
+    public List<SkillInfo> getMarketSkills() {
+        LambdaQueryWrapper<Skill> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Skill::getSource, "marketplace");
+        List<Skill> skills = skillMapper.selectList(wrapper);
+        List<SkillInfo> result = new ArrayList<>();
+        for (Skill skill : skills) {
+            result.add(toInfo(skill));
+        }
+        return result;
+    }
+
+    /**
+     * 安装 Skill
+     */
+    public SkillInfo installSkill(String skillId, Long userId) {
+        Skill marketSkill = getBySkillId(skillId);
+        if (!"marketplace".equals(marketSkill.getSource())) {
+            throw new RuntimeException("该 Skill 不是市场 Skill: " + skillId);
+        }
+
+        // 检查是否已安装
+        LambdaQueryWrapper<Skill> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Skill::getName, marketSkill.getName())
+               .ne(Skill::getSource, "marketplace");
+        Long count = skillMapper.selectCount(wrapper);
+        if (count > 0) {
+            throw new RuntimeException("Skill 已安装: " + marketSkill.getName());
+        }
+
+        // 创建副本
+        String newSkillId = UUID.randomUUID().toString();
+        Skill skill = new Skill();
+        skill.setSkillId(newSkillId);
+        skill.setName(marketSkill.getName());
+        skill.setDescription(marketSkill.getDescription());
+        skill.setType("installed");
+        skill.setToolName(marketSkill.getToolName());
+        skill.setToolDescription(marketSkill.getToolDescription());
+        skill.setParametersSchema(marketSkill.getParametersSchema());
+        skill.setTriggers(marketSkill.getTriggers());
+        skill.setConfig(marketSkill.getConfig());
+        skill.setEnabled(1);
+        skill.setPriority(marketSkill.getPriority());
+        skill.setTags(marketSkill.getTags());
+        skill.setSource("marketplace");
+        skill.setVersion(marketSkill.getVersion());
+        skill.setAuthor(marketSkill.getAuthor());
+        skill.setUserId(userId);
+
+        skillMapper.insert(skill);
+        log.info("Skill 安装成功: {} - {}", skill.getName(), skill.getSkillId());
+        return toInfo(skill);
+    }
+
+    // ========== 内部方法 ==========
+
+    /**
+     * 根据 skillId 查询数据库
+     */
+    private Skill getBySkillId(String skillId) {
+        LambdaQueryWrapper<Skill> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Skill::getSkillId, skillId);
+        Skill skill = skillMapper.selectOne(wrapper);
+        if (skill == null) {
+            throw new RuntimeException("Skill 不存在: " + skillId);
+        }
+        return skill;
+    }
+
+    /**
+     * 实体 -> DTO
+     */
+    private SkillInfo toInfo(Skill skill) {
+        SkillInfo info = new SkillInfo();
+        info.setId(skill.getSkillId());
+        info.setName(skill.getName());
+        info.setDescription(skill.getDescription());
+        info.setType(skill.getType());
+        info.setToolName(skill.getToolName());
+        info.setToolDescription(skill.getToolDescription());
+        info.setParametersSchema(skill.getParametersSchema());
+        info.setTriggers(parseList(skill.getTriggers()));
+        info.setConfig(parseMap(skill.getConfig()));
+        info.setEnabled(skill.getEnabled() == 1);
+        info.setPriority(skill.getPriority() != null ? skill.getPriority() : 0);
+        info.setTags(parseList(skill.getTags()));
+        info.setSource(skill.getSource());
+        info.setVersion(skill.getVersion());
+        info.setAuthor(skill.getAuthor());
+        info.setDownloads(0);
+        info.setRating(0.0);
+        info.setCreatedAt(skill.getCreateTime());
+        info.setUpdatedAt(skill.getUpdateTime());
+        return info;
     }
 
     /**
@@ -285,7 +383,7 @@ public class SkillService {
             int jsonEnd = response.lastIndexOf("}") + 1;
             if (jsonStart >= 0 && jsonEnd > jsonStart) {
                 String json = response.substring(jsonStart, jsonEnd);
-                return mapper.readValue(json, SkillConfig.class);
+                return objectMapper.readValue(json, SkillConfig.class);
             }
         } catch (Exception e) {
             log.warn("解析蒸馏响应失败，使用默认配置", e);
@@ -303,51 +401,35 @@ public class SkillService {
         return config;
     }
 
-    /**
-     * 安装 Skill
-     */
-    public SkillInfo installSkill(String skillId) {
-        SkillInfo marketInfo = marketSkills.get(skillId);
-        if (marketInfo == null) {
-            throw new RuntimeException("市场中不存在该 Skill: " + skillId);
+    // ========== JSON 工具方法 ==========
+
+    private String toJson(Object obj) {
+        if (obj == null) return null;
+        try {
+            return objectMapper.writeValueAsString(obj);
+        } catch (JsonProcessingException e) {
+            log.warn("JSON 序列化失败: {}", e.getMessage());
+            return null;
         }
-
-        // 检查是否已安装
-        for (SkillInfo info : skillStore.values()) {
-            if (info.getName().equals(marketInfo.getName())) {
-                throw new RuntimeException("Skill 已安装: " + marketInfo.getName());
-            }
-        }
-
-        // 创建副本
-        String id = UUID.randomUUID().toString().substring(0, 8);
-        SkillInfo info = new SkillInfo();
-        info.setId(id);
-        info.setName(marketInfo.getName());
-        info.setDescription(marketInfo.getDescription());
-        info.setType("installed");
-        info.setToolName(marketInfo.getToolName());
-        info.setToolDescription(marketInfo.getToolDescription());
-        info.setEnabled(true);
-        info.setSource("market");
-        info.setVersion(marketInfo.getVersion());
-        info.setAuthor(marketInfo.getAuthor());
-        info.setCreatedAt(LocalDateTime.now());
-        info.setUpdatedAt(LocalDateTime.now());
-
-        skillStore.put(id, info);
-
-        // 更新下载次数
-        marketInfo.setDownloads(marketInfo.getDownloads() + 1);
-
-        log.info("Skill 安装成功: {} - {}", info.getName(), info.getId());
-        return info;
     }
 
-    /**
-     * 获取 Skill 市场列表
-     */
-    public List<SkillInfo> getMarketSkills() {
-        return new ArrayList<>(marketSkills.values());
+    private List<String> parseList(String json) {
+        if (json == null || json.isEmpty()) return new ArrayList<>();
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<String>>() {});
+        } catch (JsonProcessingException e) {
+            log.warn("JSON 解析失败: {}", e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    private Map<String, Object> parseMap(String json) {
+        if (json == null || json.isEmpty()) return new HashMap<>();
+        try {
+            return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
+        } catch (JsonProcessingException e) {
+            log.warn("JSON 解析失败: {}", e.getMessage());
+            return new HashMap<>();
+        }
     }
 }

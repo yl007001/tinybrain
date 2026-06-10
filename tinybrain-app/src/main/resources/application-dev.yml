@@ -4,10 +4,10 @@ spring:
       enabled: true
       additional-paths: src/main/java
 
-  # 开发环境使用 H2 内存数据库（无需安装 MySQL）
+  # 开发环境使用 H2 文件数据库（数据持久化，重启不丢失）
   # 生产环境请切换为 MySQL 配置
   datasource:
-    url: jdbc:h2:mem:tinybrain;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
+    url: jdbc:h2:file:./data/tinybrain;DB_CLOSE_DELAY=-1;MODE=MySQL;AUTO_SERVER=TRUE
     driver-class-name: org.h2.Driver
     username: sa
     password:

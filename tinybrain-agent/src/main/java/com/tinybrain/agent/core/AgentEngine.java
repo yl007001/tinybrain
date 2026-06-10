@@ -143,17 +143,25 @@ public class AgentEngine {
      */
     public String buildSystemPrompt() {
         StringBuilder sb = new StringBuilder();
-        sb.append("You are an AI assistant. You can use the following tools:\n\n");
+        sb.append("你是一个 AI 助手。你可以使用以下工具：\n\n");
 
         for (AgentTool tool : toolRegistry.values()) {
             sb.append("## ").append(tool.getName()).append("\n");
-            sb.append("Description: ").append(tool.getDescription()).append("\n");
-            sb.append("Parameters: ").append(tool.getParametersSchema().toPrettyString()).append("\n\n");
+            sb.append("描述: ").append(tool.getDescription()).append("\n");
+            sb.append("参数: ").append(tool.getParametersSchema().toPrettyString()).append("\n\n");
         }
 
-        sb.append("To use a tool, respond with JSON format:\n");
-        sb.append("{\"tool\": \"tool_name\", \"args\": {}}\n");
-        sb.append("After executing the tool, integrate the result into your answer.\n");
+        sb.append("重要：当你需要调用工具时，必须且只能使用以下 JSON 格式，不要使用任何其他格式：\n");
+        sb.append("{\"tool\": \"工具名称\", \"args\": {\"参数名\": \"参数值\"}}\n\n");
+        sb.append("示例：\n");
+        sb.append("- 调用知识搜索: {\"tool\": \"knowledge_search\", \"args\": {\"query\": \"Java线程\"}}\n");
+        sb.append("- 调用网络搜索: {\"tool\": \"web_search\", \"args\": {\"query\": \"今日新闻\"}}\n");
+        sb.append("- 调用计算器: {\"tool\": \"calculator\", \"args\": {\"expression\": \"2+3*4\"}}\n");
+        sb.append("- 调用获取时间: {\"tool\": \"get_datetime\", \"args\": {}}\n\n");
+        sb.append("注意：\n");
+        sb.append("1. 只输出一个 JSON 对象，不要输出多个\n");
+        sb.append("2. 不要使用 XML 或其他格式，只用 JSON\n");
+        sb.append("3. 工具执行后，将结果整合到你的回答中\n");
 
         return sb.toString();
     }

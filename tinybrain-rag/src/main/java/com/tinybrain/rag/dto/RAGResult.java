@@ -22,6 +22,9 @@ public class RAGResult {
     /** Token 消耗 */
     private int totalTokens;
 
+    /** 会话ID */
+    private String sessionId;
+
     @Data
     public static class ChunkResult {
         private Long chunkId;

@@ -5,15 +5,16 @@ import com.tinybrain.agent.core.AgentEngine;
 import com.tinybrain.agent.dto.AgentRequest;
 import com.tinybrain.agent.dto.AgentResponse;
 import com.tinybrain.agent.dto.SkillInfo;
+import com.tinybrain.common.entity.Message;
+import com.tinybrain.common.entity.Session;
 import com.tinybrain.rag.service.LLMApiClient;
 import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Agent 对话服务
@@ -35,22 +36,43 @@ public class AgentService {
     private final LLMApiClient llmClient;
     private final ObjectMapper mapper;
     private final SkillService skillService;
-
-    /** 会话记忆存储（sessionId → 消息历史） */
-    private final Map<String, List<Map<String, Object>>> sessionMemory = new ConcurrentHashMap<>();
+    private final SessionService sessionService;
 
     /**
      * 处理 Agent 对话
      */
     @Timed(value = "agent.process.time", description = "Agent 对话处理耗时", percentiles = {0.5, 0.95, 0.99})
     public AgentResponse process(AgentRequest request) {
-        String sessionId = request.getSessionId() != null ? request.getSessionId() : UUID.randomUUID().toString();
+        // 获取当前用户ID
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        // 如果 sessionId 为空，创建新会话
+        String sessionId = request.getSessionId();
+        if (sessionId == null || sessionId.isBlank()) {
+            Session session = sessionService.createSession(userId, request.getMessage());
+            sessionId = session.getSessionId();
+        }
+
         AgentResponse response = new AgentResponse();
         List<AgentResponse.ToolCall> toolCalls = new ArrayList<>();
         response.setToolCalls(toolCalls);
+        response.setSessionId(sessionId);
 
-        // 获取或创建会话历史（CopyOnWriteArrayList 保证并发安全）
-        List<Map<String, Object>> history = sessionMemory.computeIfAbsent(sessionId, k -> new CopyOnWriteArrayList<>());
+        // 从数据库加载历史消息（最近20条）构建上下文
+        List<Message> recentMessages = sessionService.getRecentMessages(sessionId, 20);
+        List<Map<String, Object>> history = new ArrayList<>();
+        for (Message msg : recentMessages) {
+            Map<String, Object> m = new java.util.HashMap<>();
+            m.put("role", msg.getRole());
+            m.put("content", msg.getContent());
+            if (msg.getToolCalls() != null && !msg.getToolCalls().isBlank()) {
+                try {
+                    m.put("tool_calls", mapper.readValue(msg.getToolCalls(), List.class));
+                } catch (Exception ignored) {
+                }
+            }
+            history.add(m);
+        }
 
         // 构建 System Prompt（含工具描述）
         String systemPrompt = agentEngine.buildSystemPrompt();
@@ -198,13 +220,18 @@ public class AgentService {
         response.setReply(finalReply);
         response.setIterations(iterations);
 
-        // 保存到历史（只保存用户消息和最终回复）
-        history.add(Map.of("role", "user", "content", request.getMessage()));
-        history.add(Map.of("role", "assistant", "content", finalReply));
-        // 限制历史长度（只保留最近 10 轮）
-        if (history.size() > 20) {
-            history.subList(0, history.size() - 20).clear();
+        // 保存用户消息到数据库
+        sessionService.saveMessage(sessionId, userId, "user", request.getMessage(), null);
+
+        // 保存 assistant 回复到数据库（含 tool_calls JSON）
+        String toolCallsJson = null;
+        if (!toolCalls.isEmpty()) {
+            try {
+                toolCallsJson = mapper.writeValueAsString(toolCalls);
+            } catch (Exception ignored) {
+            }
         }
+        sessionService.saveMessage(sessionId, userId, "assistant", finalReply, toolCallsJson);
 
         return response;
     }
@@ -280,10 +307,11 @@ public class AgentService {
     }
 
     /**
-     * 清除会话历史
+     * 清除会话历史（同时清除数据库记录）
      */
     public void clearSession(String sessionId) {
-        sessionMemory.remove(sessionId);
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        sessionService.deleteSession(sessionId, userId);
     }
 
     // ========== Skill 集成方法 ==========

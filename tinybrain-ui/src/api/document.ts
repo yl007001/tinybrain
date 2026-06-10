@@ -57,3 +57,19 @@ export function uploadDocument(file: File, contentType: string = 'markdown') {
     timeout: 60000,
   })
 }
+
+export function batchUploadDocuments(documents: Array<{ title: string; content: string; contentType?: string }>) {
+  return http.post('/documents/batch-upload', documents)
+}
+
+export function batchDeleteDocuments(ids: number[]) {
+  return http.post('/documents/batch-delete', { ids })
+}
+
+export function batchIndexDocuments(ids: number[]) {
+  return http.post('/documents/batch-index', { ids })
+}
+
+export function batchIndexByKeyword(keyword: string) {
+  return http.post('/documents/batch-index-by-keyword', { keyword })
+}

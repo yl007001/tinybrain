@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -35,7 +36,8 @@ public class McpController {
     @Operation(summary = "添加 MCP 服务器", description = "添加一个新的 MCP 服务器配置")
     @PostMapping("/servers")
     public R<McpServerInfo> addServer(@Valid @RequestBody McpServerConfig config) {
-        return R.ok(mcpService.addServer(config));
+        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return R.ok(mcpService.addServer(config, userId));
     }
 
     @Operation(summary = "更新 MCP 服务器", description = "更新指定 MCP 服务器的配置")

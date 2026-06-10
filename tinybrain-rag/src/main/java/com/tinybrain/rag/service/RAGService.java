@@ -6,10 +6,8 @@ import com.tinybrain.knowledge.entity.DocumentChunk;
 import com.tinybrain.knowledge.mapper.DocumentChunkMapper;
 import com.tinybrain.knowledge.mapper.DocumentMapper;
 import com.tinybrain.rag.chunk.DocChunkStrategy;
-import com.tinybrain.rag.dto.EmbeddingRequest;
-import com.tinybrain.rag.dto.EmbeddingResponse;
 import com.tinybrain.rag.dto.RAGResult;
-import com.tinybrain.rag.vector.VectorStore;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,22 +18,16 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * RAG 核心服务 — 高级版
+ * RAG 核心服务 — 关键词检索版
  * <p>
  * RAG = Retrieval Augmented Generation（检索增强生成）
  * <p>
- * 高级流程：
- * 1. 查询改写：LLM 将模糊问题改写为更清晰的表述
- * 2. 向量化问题
- * 3. 两级检索：IVF ANN → 暴力搜索融合
- * 4. 重排序：LLM 对检索结果重新评分
- * 5. 上下文拼接 + LLM 生成回答
+ * 创新点：使用 DeepSeek 提取关键词 + 数据库全文检索，无需外部 Embedding 服务
  * <p>
- * ：
- * - RAG 解决的是 LLM 知识截止和幻觉问题
- * - 检索质量决定 RAG 效果（分块策略 + 向量模型 + 排序）
- * - 查询改写 + HyDE + 重排序是提升检索质量的三大法宝
- * - 批量 Embedding 比逐条调用减少 10x 延迟
+ * 流程：
+ * 1. 文档分块 → DeepSeek 提取关键词 → 存储到数据库
+ * 2. 用户提问 → DeepSeek 提取查询关键词 → 关键词匹配检索
+ * 3. 检索结果 → DeepSeek 生成回答
  */
 @Slf4j
 @Service
@@ -43,7 +35,6 @@ import java.util.stream.Collectors;
 public class RAGService {
 
     private final LLMApiClient llmClient;
-    private final VectorStore vectorStore;
     private final DocChunkStrategy chunkStrategy;
     private final DocumentMapper documentMapper;
     private final DocumentChunkMapper documentChunkMapper;
@@ -51,9 +42,7 @@ public class RAGService {
     // ==================== 文档索引 ====================
 
     /**
-     * 文档引入：分块 → 批量向量化 → 存入向量库
-     * <p>
-     * 优化：使用批量嵌入 API 替代逐条调用，减少 LLM API 请求次数
+     * 文档索引：分块 → 提取关键词 → 存储到数据库
      */
     @Timed(value = "rag.index.time", description = "文档索引耗时", percentiles = {0.5, 0.95, 0.99})
     @Transactional(rollbackFor = Exception.class)
@@ -69,80 +58,86 @@ public class RAGService {
         List<DocChunkStrategy.Chunk> chunks = chunkStrategy.split(doc.getContent());
         log.info("文档 {} 分块完成: {} 块", documentId, chunks.size());
 
-        // 2. 删除旧分块和向量
+        // 2. 删除旧分块
         documentChunkMapper.deleteByDocumentId(documentId);
-        vectorStore.deleteByDocumentId(documentId);
 
-        // 3. 批量保存分块到数据库
-        List<DocumentChunk> entities = new ArrayList<>();
+        // 3. 逐块提取关键词并保存
+        int successCount = 0;
         for (DocChunkStrategy.Chunk chunk : chunks) {
-            DocumentChunk entity = new DocumentChunk();
-            entity.setDocumentId(documentId);
-            entity.setChunkIndex(chunk.getIndex());
-            entity.setContent(chunk.getContent());
-            entities.add(entity);
-        }
-        // 逐条 insert（MyBatis-Plus 批量插入）
-        for (DocumentChunk entity : entities) {
-            documentChunkMapper.insert(entity);
-        }
+            try {
+                // 用 DeepSeek 提取关键词
+                String keywords = extractKeywords(chunk.getContent());
 
-        // 4. 批量向量化（一次性发送所有文本，减少 API 调用）
-        List<String> texts = entities.stream()
-                .map(DocumentChunk::getContent)
-                .collect(Collectors.toList());
+                DocumentChunk entity = new DocumentChunk();
+                entity.setDocumentId(documentId);
+                entity.setChunkIndex(chunk.getIndex());
+                entity.setContent(chunk.getContent());
+                entity.setKeywords(keywords);
+                documentChunkMapper.insert(entity);
+                successCount++;
 
-        List<List<Double>> vectors = batchEmbed(texts);
-
-        // 5. 存入向量库
-        if (vectors != null && vectors.size() == entities.size()) {
-            for (int i = 0; i < entities.size(); i++) {
-                List<Double> vector = vectors.get(i);
-                if (vector != null) {
-                    vectorStore.upsert(entities.get(i).getId(), documentId, vector);
-                }
+                log.debug("分块 {} 关键词: {}", chunk.getIndex(), keywords);
+            } catch (Exception e) {
+                log.warn("分块 {} 关键词提取失败: {}", chunk.getIndex(), e.getMessage());
+                // 即使关键词提取失败，也保存分块（只是没有关键词）
+                DocumentChunk entity = new DocumentChunk();
+                entity.setDocumentId(documentId);
+                entity.setChunkIndex(chunk.getIndex());
+                entity.setContent(chunk.getContent());
+                documentChunkMapper.insert(entity);
             }
-            log.info("文档 {} 索引完成: {} 块向量化 (耗时: {}ms)",
-                    documentId, entities.size(), System.currentTimeMillis() - start);
-        } else {
-            log.warn("文档 {} 部分向量化失败: 文本数={}, 向量数={}",
-                    documentId, texts.size(), vectors != null ? vectors.size() : 0);
         }
+
+        log.info("文档 {} 索引完成: {}/{} 块成功 (耗时: {}ms)",
+                documentId, successCount, chunks.size(), System.currentTimeMillis() - start);
+    }
+
+    /**
+     * 使用 DeepSeek 提取关键词
+     */
+    private String extractKeywords(String content) {
+        // 截取前1000字符避免 token 过多
+        String truncated = content.length() > 1000 ? content.substring(0, 1000) : content;
+
+        String prompt = """
+                请从以下文本中提取 5-10 个核心关键词，用逗号分隔返回。
+                关键词应该是名词或名词短语，能概括文本核心内容。
+                只返回关键词，不要任何解释。
+
+                文本：
+                %s
+
+                关键词：""".formatted(truncated);
+
+        String result = llmClient.chat("你是一个关键词提取专家，只返回逗号分隔的关键词。", prompt);
+        return result != null ? result.trim() : "";
     }
 
     // ==================== RAG 问答 ====================
 
     /**
-     * RAG 问答（高级版）
+     * RAG 问答
      * <p>
      * 流程：
-     * 1. 查询改写：LLM 重写用户问题
-     * 2. 问题向量化
-     * 3. 向量检索（IVF + 暴力搜索融合）
-     * 4. LLM 重排序 Top-K 结果
-     * 5. 拼接 Prompt + 生成回答
+     * 1. DeepSeek 从问题中提取查询关键词
+     * 2. 关键词匹配检索相关分块
+     * 3. DeepSeek 基于检索结果生成回答
      */
     @Timed(value = "rag.ask.time", description = "RAG 问答耗时", percentiles = {0.5, 0.95, 0.99})
     public RAGResult ask(String question, int topK) {
         long start = System.currentTimeMillis();
         RAGResult result = new RAGResult();
+        result.setQuestion(question);
 
-        // Step 1: 查询改写 — 让 LLM 把模糊问题改得更清晰
-        String rewrittenQuery = rewriteQuery(question);
-        result.setQuestion(rewrittenQuery != null ? rewrittenQuery : question);
-        log.info("原始问题: {} → 改写后: {}", question, result.getQuestion());
+        // Step 1: 从问题中提取查询关键词
+        String queryKeywords = extractQueryKeywords(question);
+        log.info("问题: {} → 关键词: {}", question, queryKeywords);
 
-        // Step 2: 问题向量化
-        List<Double> queryVector = llmClient.embed(result.getQuestion());
-        if (queryVector == null) {
-            throw BusinessException.badRequest("问题向量化失败，请检查 LLM API 配置（如需本地测试，可激活 ollama profile）");
-        }
+        // Step 2: 关键词匹配检索
+        List<DocumentChunk> matchedChunks = searchByKeywords(queryKeywords, topK);
+        log.info("检索到 {} 条相关结果 (耗时: {}ms)", matchedChunks.size(), System.currentTimeMillis() - start);
 
-        // Step 3: 向量检索 Top-K（IVF 加速 + 暴力搜索回退）
-        List<VectorStore.SearchResult> hits = vectorStore.search(queryVector, topK);
-        log.info("检索到 {} 条相关结果 (耗时: {}ms)", hits.size(), System.currentTimeMillis() - start);
-
-        if (hits.isEmpty()) {
+        if (matchedChunks.isEmpty()) {
             result.setChunks(new ArrayList<>());
             result.setAnswer("未在知识库中检索到相关信息。请先确保：1) 已在「知识库」上传文档；" +
                     "2) 对该文档执行了「索引到 RAG」操作。");
@@ -150,19 +145,29 @@ public class RAGService {
             return result;
         }
 
-        // Step 4: 获取分块内容 + 重排序
-        List<RAGResult.ChunkResult> chunkResults = getChunkResults(hits);
+        // Step 3: 构建检索结果
+        List<RAGResult.ChunkResult> chunkResults = new ArrayList<>();
+        for (DocumentChunk chunk : matchedChunks) {
+            Document doc = documentMapper.selectById(chunk.getDocumentId());
+            RAGResult.ChunkResult cr = new RAGResult.ChunkResult();
+            cr.setChunkId(chunk.getId());
+            cr.setDocumentId(chunk.getDocumentId());
+            cr.setDocumentTitle(doc != null ? doc.getTitle() : "未知");
+            cr.setContent(chunk.getContent());
+            cr.setScore(1.0); // 关键词匹配不计算相似度分数
+            chunkResults.add(cr);
+        }
         result.setChunks(chunkResults);
 
-        // Step 5: 拼接上下文
+        // Step 4: 拼接上下文
         StringBuilder contextBuilder = new StringBuilder();
         for (RAGResult.ChunkResult cr : chunkResults) {
             contextBuilder.append("【来源：").append(cr.getDocumentTitle()).append("】\n");
             contextBuilder.append(cr.getContent()).append("\n\n");
         }
 
-        // Step 6: 构建 Prompt + 调用 LLM
-        String prompt = buildRAGPrompt(result.getQuestion(), contextBuilder.toString());
+        // Step 5: 构建 Prompt + 调用 DeepSeek 生成回答
+        String prompt = buildRAGPrompt(question, contextBuilder.toString());
         String systemMsg = "你是一个知识库助手，请基于提供的上下文回答问题。" +
                 "如果上下文不足以回答，如实说明不清楚。请注明信息来源。" +
                 "回答应当详尽、准确、条理清晰。";
@@ -170,118 +175,96 @@ public class RAGService {
 
         result.setAnswer(answer != null ? answer : "LLM 回答生成失败，请检查 LLM API 配置");
 
-        // Token 估算（用于监控）
-        int estimatedTokens = result.getQuestion().length() / 2
+        // Token 估算
+        int estimatedTokens = question.length() / 2
                 + contextBuilder.length() / 2
                 + (answer != null ? answer.length() / 2 : 0);
         result.setTotalTokens(estimatedTokens);
 
         long elapsed = System.currentTimeMillis() - start;
-        log.info("RAG 问答完成: 问题='{}', 检索={}块, 耗时={}ms, 预估tokens={}",
-                question, hits.size(), elapsed, estimatedTokens);
+        log.info("RAG 问答完成: 问题='{}', 检索={}块, 耗时={}ms", question, matchedChunks.size(), elapsed);
         return result;
     }
 
-    // ==================== 高级 RAG 技术 ====================
-
     /**
-     * 查询改写 (Query Rewriting)
-     * <p>
-     * 用户原始问题可能模糊、口语化、缺少上下文。
-     * 通过 LLM 将问题改写为更适合向量检索的表述。
-     * <p>
-     * 例如: "讲一下事务" → "Spring 事务的传播机制和隔离级别"
+     * 从问题中提取查询关键词
      */
-    private String rewriteQuery(String original) {
-        if (original == null || original.length() < 5) {
-            return original; // 短问题不需要改写
+    private String extractQueryKeywords(String question) {
+        if (question == null || question.length() < 3) {
+            return question;
         }
+
         try {
             String prompt = """
-                    你是一个查询改写助手。用户的问题可能模糊或口语化，
-                    请将其改写为适合知识库检索的、清晰完整的查询语句。
-                    只返回改写后的查询，不要加任何解释。
+                    请从以下问题中提取 3-5 个核心检索关键词，用逗号分隔返回。
+                    关键词应该是能匹配知识库文档的术语。
+                    只返回关键词，不要任何解释。
 
-                    原始问题：%s
-                    改写后：""".formatted(original);
-            String rewritten = llmClient.chat("你是一个查询改写专家，请简洁改写。", prompt);
-            if (rewritten != null && !rewritten.isBlank() && rewritten.length() < original.length() * 3) {
-                return rewritten.trim();
+                    问题：%s
+
+                    关键词：""".formatted(question);
+
+            String result = llmClient.chat("你是一个关键词提取专家，只返回逗号分隔的关键词。", prompt);
+            if (result != null && !result.isBlank()) {
+                return result.trim();
             }
         } catch (Exception e) {
-            log.warn("查询改写失败，使用原始问题: {}", e.getMessage());
+            log.warn("查询关键词提取失败，使用原始问题: {}", e.getMessage());
         }
-        return original;
+
+        // 回退：直接用原始问题
+        return question;
     }
 
     /**
-     * 批量嵌入（一次性向量化多个文本）
+     * 关键词匹配检索
      * <p>
-     * 相比逐条调用嵌入 API，批量嵌入可以减少 HTTP 开销，
-     * 并且很多嵌入模型对批量输入有优化。
-     * <p>
-     * 注意：DeepSeek Embedding API 直接支持批量输入。
+     * 使用 SQL LIKE 进行模糊匹配，支持多个关键词（OR 逻辑）
+     * 任一关键词在 content 或 keywords 中出现即匹配
      */
-    private List<List<Double>> batchEmbed(List<String> texts) {
-        if (texts == null || texts.isEmpty()) return Collections.emptyList();
-        if (texts.size() == 1) {
-            // 单条直接调用快捷方法
-            List<Double> vec = llmClient.embed(texts.get(0));
-            return vec != null ? List.of(vec) : Collections.emptyList();
+    private List<DocumentChunk> searchByKeywords(String keywords, int topK) {
+        if (keywords == null || keywords.isBlank()) {
+            return Collections.emptyList();
         }
 
-        try {
-            EmbeddingResponse response = llmClient.embed(EmbeddingRequest.of(texts));
-            if (response != null && response.getData() != null) {
-                // 保持原始顺序
-                return response.getData().stream()
-                        .sorted(Comparator.comparingInt(d -> d.getIndex()))
-                        .map(d -> d.getEmbedding())
-                        .collect(Collectors.toList());
+        // 分割关键词
+        String[] keywordArray = keywords.split("[,，、\\s]+");
+
+        // 构建查询：任一关键词匹配即可（OR 逻辑）
+        LambdaQueryWrapper<DocumentChunk> wrapper = new LambdaQueryWrapper<>();
+
+        // 使用 nested 条件实现 OR 逻辑
+        wrapper.and(w -> {
+            boolean first = true;
+            for (String kw : keywordArray) {
+                String keyword = kw.trim();
+                if (keyword.isEmpty()) continue;
+
+                if (!first) {
+                    w.or();
+                }
+                first = false;
+
+                // 在 content 或 keywords 中搜索
+                final String k = keyword;
+                w.nested(inner -> inner
+                        .like(DocumentChunk::getContent, k)
+                        .or()
+                        .like(DocumentChunk::getKeywords, k)
+                );
             }
-        } catch (Exception e) {
-            log.warn("批量嵌入失败，回退逐条嵌入: {}", e.getMessage());
-        }
+        });
 
-        // 回退：逐条调用
-        List<List<Double>> results = new ArrayList<>();
-        for (String text : texts) {
-            results.add(llmClient.embed(text));
-        }
+        wrapper.last("LIMIT " + topK);
+
+        List<DocumentChunk> results = documentChunkMapper.selectList(wrapper);
         return results;
-    }
-
-    /**
-     * 获取分块内容并附加文档信息
-     */
-    private List<RAGResult.ChunkResult> getChunkResults(List<VectorStore.SearchResult> hits) {
-        List<RAGResult.ChunkResult> chunkResults = new ArrayList<>();
-        for (VectorStore.SearchResult hit : hits) {
-            DocumentChunk chunk = documentChunkMapper.selectById(hit.getChunkId());
-            if (chunk == null) continue;
-
-            Document doc = documentMapper.selectById(hit.getDocumentId());
-
-            RAGResult.ChunkResult cr = new RAGResult.ChunkResult();
-            cr.setChunkId(hit.getChunkId());
-            cr.setDocumentId(hit.getDocumentId());
-            cr.setDocumentTitle(doc != null ? doc.getTitle() : "未知");
-            cr.setContent(chunk.getContent());
-            cr.setScore((double) hit.getScore());
-            chunkResults.add(cr);
-        }
-        return chunkResults;
     }
 
     // ==================== Prompt 构建 ====================
 
     /**
      * 构建 RAG Prompt
-     * <p>
-     * 这是 RAG 效果的关键优化点。好的 Prompt 能引导 LLM：
-     * - 基于上下文回答，不胡编
-     * - 承认知识不足
-     * - 标注信息来源
      */
     private String buildRAGPrompt(String question, String context) {
         return """
@@ -302,15 +285,19 @@ public class RAGService {
     }
 
     /**
-     * 获取向量存储统计信息（用于监控界面）
+     * 获取统计信息
      */
     public Map<String, Object> getStats() {
         Map<String, Object> stats = new LinkedHashMap<>();
-        stats.put("totalVectors", vectorStore.size());
-        var searchStats = vectorStore.getSearchStats();
-        stats.put("ivfActive", searchStats.isIvfActive());
-        stats.put("ivfClusters", searchStats.getIvfClusters());
-        stats.put("ivfProbes", searchStats.getIvfProbes());
+        // 统计已索引的分块数
+        Long chunkCount = documentChunkMapper.selectCount(
+                new LambdaQueryWrapper<DocumentChunk>().isNotNull(DocumentChunk::getKeywords)
+        );
+        stats.put("indexedChunks", chunkCount);
+        stats.put("totalChunks", documentChunkMapper.selectCount(null));
+        // 兼容前端：totalVectors 显示已索引分块数
+        stats.put("totalVectors", chunkCount);
+        stats.put("searchMode", "keyword-based (LLM extraction)");
         return stats;
     }
 }

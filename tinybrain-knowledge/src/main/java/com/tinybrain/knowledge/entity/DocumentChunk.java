@@ -37,6 +37,9 @@ public class DocumentChunk {
     /** 向量嵌入（Phase 2 使用，二进制存储） */
     private byte[] embedding;
 
+    /** LLM 提取的关键词（逗号分隔，用于关键词检索） */
+    private String keywords;
+
     /** 块元数据（JSON，如起始位置、所属章节标题等） */
     private String chunkMeta;
 

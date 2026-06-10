@@ -44,3 +44,19 @@ export function getAgentTools() {
 export function clearSession(sessionId: string) {
   return http.delete(`/agent/session/${sessionId}`)
 }
+
+export function getSessions() {
+  return http.get('/sessions/list')
+}
+
+export function getSessionMessages(sessionId: string) {
+  return http.get(`/sessions/${sessionId}/messages`)
+}
+
+export function deleteSession(sessionId: string) {
+  return http.delete(`/sessions/${sessionId}`)
+}
+
+export function batchDeleteSessions(sessionIds: string[]) {
+  return http.post('/sessions/batch-delete', { sessionIds })
+}

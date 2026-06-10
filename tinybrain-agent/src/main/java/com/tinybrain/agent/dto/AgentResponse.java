@@ -10,6 +10,9 @@ import java.util.List;
 @Data
 public class AgentResponse {
 
+    /** 会话ID */
+    private String sessionId;
+
     /** 最终回复 */
     private String reply;
 

@@ -1,9 +1,12 @@
 package com.tinybrain.knowledge.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.tinybrain.common.event.DocumentIndexEvent;
 import com.tinybrain.common.response.PageResult;
 import com.tinybrain.common.response.R;
 import com.tinybrain.common.util.SecurityUtil;
 import com.tinybrain.knowledge.dto.*;
+import com.tinybrain.knowledge.entity.Document;
 import com.tinybrain.knowledge.service.DocumentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -11,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +22,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 文档控制器
@@ -33,6 +41,7 @@ import java.nio.charset.StandardCharsets;
 public class DocumentController {
 
     private final DocumentService documentService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Operation(summary = "创建文档", description = "创建新的知识库文档，支持 Markdown/纯文本格式")
     @PostMapping
@@ -121,5 +130,107 @@ public class DocumentController {
             log.error("文档上传失败: {}", e.getMessage());
             return R.fail(500, "文件读取失败: " + e.getMessage());
         }
+    }
+
+    // ========== 批量操作接口 ==========
+
+    @Operation(summary = "批量上传文档", description = "批量创建文档，接收 JSON 数组，每个元素包含 title、content、contentType")
+    @PostMapping("/batch-upload")
+    public R<Map<String, Object>> batchUpload(@Valid @RequestBody List<BatchUploadItem> items) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        List<DocumentVO> results = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
+
+        for (int i = 0; i < items.size(); i++) {
+            BatchUploadItem item = items.get(i);
+            try {
+                DocumentCreateRequest request = new DocumentCreateRequest();
+                request.setTitle(item.getTitle());
+                request.setContent(item.getContent());
+                request.setContentType(item.getContentType());
+                request.setSummary(item.getContent().length() > 200
+                        ? item.getContent().substring(0, 200) + "..." : item.getContent());
+
+                DocumentVO doc = documentService.create(request, userId);
+                results.add(doc);
+            } catch (Exception e) {
+                log.error("批量上传第 {} 项失败: title={}, error={}", i + 1, item.getTitle(), e.getMessage());
+                errors.add("第 " + (i + 1) + " 项失败: " + item.getTitle() + " - " + e.getMessage());
+            }
+        }
+
+        Map<String, Object> data = Map.of(
+                "success", results,
+                "errors", errors,
+                "successCount", results.size(),
+                "errorCount", errors.size()
+        );
+
+        if (errors.isEmpty()) {
+            return R.ok("批量上传成功，共 " + results.size() + " 个文档", data);
+        } else {
+            return R.ok("部分上传成功: 成功 " + results.size() + " 个，失败 " + errors.size() + " 个", data);
+        }
+    }
+
+    @Operation(summary = "批量删除文档", description = "根据 ID 列表批量逻辑删除文档")
+    @PostMapping("/batch-delete")
+    public R<Void> batchDelete(@Valid @RequestBody BatchIdsRequest request) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        List<Long> ids = request.getIds();
+
+        // 校验文档归属
+        List<Document> documents = documentService.listByIds(ids);
+        List<Long> unauthorized = documents.stream()
+                .filter(d -> !d.getUserId().equals(userId))
+                .map(Document::getId)
+                .collect(Collectors.toList());
+
+        if (!unauthorized.isEmpty()) {
+            return R.fail(403, "无权删除以下文档: " + unauthorized);
+        }
+
+        documentService.removeByIds(ids);
+        log.info("批量删除文档: userId={}, ids={}, 数量={}", userId, ids, ids.size());
+        return R.okMsg("批量删除成功，共 " + ids.size() + " 个文档");
+    }
+
+    @Operation(summary = "批量索引到 RAG", description = "根据 ID 列表批量将文档提交到 RAG 向量库进行索引（异步执行）")
+    @PostMapping("/batch-index")
+    public R<Void> batchIndex(@Valid @RequestBody BatchIdsRequest request) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        List<Long> ids = request.getIds();
+
+        // 发布索引事件，由 rag 模块异步处理
+        eventPublisher.publishEvent(new DocumentIndexEvent(this, ids, userId));
+        log.info("批量索引任务已提交: userId={}, ids={}, 数量={}", userId, ids, ids.size());
+        return R.okMsg("批量索引任务已提交，共 " + ids.size() + " 个文档将在后台异步执行");
+    }
+
+    @Operation(summary = "根据关键词批量索引", description = "查找标题或内容包含关键词的文档，批量提交 RAG 索引")
+    @PostMapping("/batch-index-by-keyword")
+    public R<Void> batchIndexByKeyword(@Valid @RequestBody BatchKeywordRequest request) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        String keyword = request.getKeyword();
+
+        // 查询当前用户下标题或内容包含关键词的文档
+        LambdaQueryWrapper<Document> wrapper = new LambdaQueryWrapper<Document>()
+                .eq(Document::getUserId, userId)
+                .and(w -> w
+                        .like(Document::getTitle, keyword)
+                        .or()
+                        .like(Document::getContent, keyword));
+        List<Document> documents = documentService.list(wrapper);
+
+        if (documents.isEmpty()) {
+            return R.okMsg("未找到包含关键词「" + keyword + "」的文档");
+        }
+
+        List<Long> ids = documents.stream().map(Document::getId).collect(Collectors.toList());
+
+        // 发布索引事件
+        eventPublisher.publishEvent(new DocumentIndexEvent(this, ids, userId));
+        log.info("关键词批量索引任务已提交: userId={}, keyword={}, 匹配文档数={}", userId, keyword, ids.size());
+        return R.okMsg("已找到 " + ids.size() + " 个匹配文档，索引任务已提交");
     }
 }

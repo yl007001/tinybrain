@@ -2,6 +2,12 @@
   <div class="documents-page">
     <!-- Header -->
     <div class="page-header">
+      <div class="header-top">
+        <div class="doc-stats">
+          <span class="stats-count">共 {{ total }} 份文档</span>
+          <span v-if="selectedIds.size > 0" class="stats-selected">已选 {{ selectedIds.size }} 份</span>
+        </div>
+      </div>
       <div class="header-actions">
         <div class="search-box">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -12,8 +18,12 @@
             v-model="query.keyword"
             placeholder="搜索文档..."
             @keyup.enter="fetchDocuments"
-            @clear="fetchDocuments"
           />
+          <button v-if="query.keyword" class="search-clear" @click="query.keyword = ''; fetchDocuments()">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M4 4l6 6M10 4l-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </button>
         </div>
         <button class="btn-secondary" @click="showCreateDialog = true">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -29,6 +39,43 @@
           上传
           <input type="file" accept=".md,.txt,.markdown" @change="handleFileUpload" hidden />
         </label>
+      </div>
+      <!-- Batch Actions Bar -->
+      <div class="batch-actions">
+        <div class="batch-left">
+          <button class="btn-batch" @click="showBatchUploadDialog = true">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M7 9V2M7 2L4 5M7 2l3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M2 9v2.5h10V9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            批量上传
+          </button>
+          <button class="btn-batch btn-batch-danger" :disabled="selectedIds.size === 0" @click="handleBatchDelete">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 4h10M5 4V2h4v2M3 4v8a1 1 0 001 1h6a1 1 0 001-1V4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            批量删除
+          </button>
+          <button class="btn-batch btn-batch-accent" :disabled="selectedIds.size === 0" @click="handleBatchIndex">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M7 5v4M5 7h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            批量索引
+          </button>
+          <button class="btn-batch" @click="showKeywordDialog = true">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M9 9l3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            关键词索引
+          </button>
+        </div>
+        <div class="batch-right">
+          <button class="btn-text" @click="toggleSelectAll">
+            {{ isAllSelected ? '取消全选' : '全选' }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -47,23 +94,34 @@
         v-for="doc in documents"
         :key="doc.id"
         class="doc-card"
+        :class="{ 'doc-selected': selectedIds.has(doc.id) }"
         @click="viewDetail(doc)"
       >
-        <div class="doc-header">
-          <span class="doc-title">{{ doc.title }}</span>
-          <span class="doc-status" :class="doc.status === 1 ? 'published' : 'draft'">
-            {{ doc.status === 1 ? '已发布' : '草稿' }}
-          </span>
+        <div class="doc-checkbox-wrap" @click.stop>
+          <input
+            type="checkbox"
+            :checked="selectedIds.has(doc.id)"
+            @change="toggleSelect(doc.id)"
+            class="doc-checkbox"
+          />
         </div>
-        <p class="doc-summary">{{ doc.summary || '暂无摘要' }}</p>
-        <div class="doc-footer">
-          <span class="doc-type">{{ doc.contentType || 'markdown' }}</span>
-          <span class="doc-time">{{ formatDate(doc.createTime) }}</span>
-          <button class="doc-delete" @click.stop="handleDelete(doc)" title="删除">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M2 4h10M5 4V2h4v2M3 4v8a1 1 0 001 1h6a1 1 0 001-1V4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
+        <div class="doc-body">
+          <div class="doc-header">
+            <span class="doc-title">{{ doc.title }}</span>
+            <span class="doc-status" :class="doc.status === 1 ? 'published' : 'draft'">
+              {{ doc.status === 1 ? '已发布' : '草稿' }}
+            </span>
+          </div>
+          <p class="doc-summary">{{ doc.summary || '暂无摘要' }}</p>
+          <div class="doc-footer">
+            <span class="doc-type">{{ doc.contentType || 'markdown' }}</span>
+            <span class="doc-time">{{ formatDate(doc.createTime) }}</span>
+            <button class="doc-delete" @click.stop="handleDelete(doc)" title="删除">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M2 4h10M5 4V2h4v2M3 4v8a1 1 0 001 1h6a1 1 0 001-1V4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -136,13 +194,112 @@
         </div>
       </div>
     </div>
+
+    <!-- Batch Upload Dialog -->
+    <div v-if="showBatchUploadDialog" class="dialog-overlay" @click.self="showBatchUploadDialog = false">
+      <div class="dialog dialog-lg">
+        <div class="dialog-header">
+          <h3>批量上传文档</h3>
+          <button class="dialog-close" @click="showBatchUploadDialog = false">&times;</button>
+        </div>
+        <div class="dialog-body">
+          <!-- 文件选择区域 -->
+          <div class="form-group">
+            <label>选择本地文件</label>
+            <div class="file-drop-zone" @dragover.prevent @drop.prevent="handleFileDrop">
+              <input
+                type="file"
+                ref="fileInputRef"
+                multiple
+                accept=".md,.txt,.markdown,.text,.json,.csv,.html,.htm,.xml,.log"
+                @change="handleFileSelect"
+                hidden
+              />
+              <div class="drop-content" @click="fileInputRef?.click()">
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                  <path d="M20 25V10M20 10l-6 6M20 10l6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M6 25v5h28v-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <p>点击选择文件 或 拖拽文件到此处</p>
+                <span class="drop-hint">支持 .md .txt .json .csv .html .xml .log 等格式，可多选</span>
+              </div>
+            </div>
+            <!-- 已选文件列表 -->
+            <div v-if="selectedFiles.length > 0" class="selected-files">
+              <div class="files-header">
+                <span>已选 {{ selectedFiles.length }} 个文件</span>
+                <button class="btn-link" @click="selectedFiles = []">清空</button>
+              </div>
+              <div class="files-list">
+                <div v-for="(file, idx) in selectedFiles" :key="idx" class="file-item">
+                  <span class="file-icon">📄</span>
+                  <span class="file-name">{{ file.name }}</span>
+                  <span class="file-size">{{ formatFileSize(file.size) }}</span>
+                  <button class="file-remove" @click="selectedFiles.splice(idx, 1)">&times;</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- 分隔线 -->
+          <div class="divider-or"><span>或</span></div>
+          <!-- 手动输入区域 -->
+          <div class="form-group">
+            <label>手动输入</label>
+            <div class="batch-upload-tip">每行一个文档，格式：标题 | 内容（用 | 分隔）</div>
+            <textarea
+              v-model="batchUploadText"
+              rows="6"
+              placeholder="标题1 | 内容1&#10;标题2 | 内容2"
+            ></textarea>
+          </div>
+        </div>
+        <div class="dialog-footer">
+          <button class="btn-ghost" @click="showBatchUploadDialog = false">取消</button>
+          <button class="btn-primary" :disabled="batchUploading" @click="handleBatchUpload">
+            {{ batchUploading ? '上传中...' : '上传' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Keyword Index Dialog -->
+    <div v-if="showKeywordDialog" class="dialog-overlay" @click.self="showKeywordDialog = false">
+      <div class="dialog">
+        <div class="dialog-header">
+          <h3>关键词索引</h3>
+          <button class="dialog-close" @click="showKeywordDialog = false">&times;</button>
+        </div>
+        <div class="dialog-body">
+          <div class="form-group">
+            <label>关键词</label>
+            <input v-model="keywordIndex" placeholder="输入关键词，将搜索匹配的文档并索引到 RAG" @keyup.enter="handleKeywordIndex" />
+          </div>
+        </div>
+        <div class="dialog-footer">
+          <button class="btn-ghost" @click="showKeywordDialog = false">取消</button>
+          <button class="btn-primary" :disabled="keywordIndexing || !keywordIndex.trim()" @click="handleKeywordIndex">
+            {{ keywordIndexing ? '索引中...' : '开始索引' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getDocuments, createDocument, deleteDocument, uploadDocument, getDocumentDetail } from '@/api/document'
+import {
+  getDocuments,
+  createDocument,
+  deleteDocument,
+  uploadDocument,
+  getDocumentDetail,
+  batchUploadDocuments,
+  batchDeleteDocuments,
+  batchIndexDocuments,
+  batchIndexByKeyword,
+} from '@/api/document'
 import { indexDocument as indexDoc } from '@/api/rag'
 import type { DocumentVO } from '@/api/document'
 
@@ -152,7 +309,12 @@ const documents = ref<DocumentVO[]>([])
 const total = ref(0)
 const showCreateDialog = ref(false)
 const showDetailDialog = ref(false)
+const showBatchUploadDialog = ref(false)
+const showKeywordDialog = ref(false)
 const currentDoc = ref<DocumentVO | null>(null)
+const selectedIds = ref<Set<number>>(new Set())
+const batchUploading = ref(false)
+const keywordIndexing = ref(false)
 
 const query = reactive({
   page: 1,
@@ -166,6 +328,34 @@ const createForm = reactive({
   summary: '',
   content: '',
 })
+
+const batchUploadText = ref('')
+const batchContentType = ref('markdown')
+const keywordIndex = ref('')
+const selectedFiles = ref<File[]>([])
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+const isAllSelected = computed(() => {
+  return documents.value.length > 0 && documents.value.every(doc => selectedIds.value.has(doc.id))
+})
+
+function toggleSelect(id: number) {
+  const newSet = new Set(selectedIds.value)
+  if (newSet.has(id)) {
+    newSet.delete(id)
+  } else {
+    newSet.add(id)
+  }
+  selectedIds.value = newSet
+}
+
+function toggleSelectAll() {
+  if (isAllSelected.value) {
+    selectedIds.value = new Set()
+  } else {
+    selectedIds.value = new Set(documents.value.map(doc => doc.id))
+  }
+}
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return ''
@@ -247,6 +437,119 @@ async function indexDocument() {
   } catch { /* ignore */ }
 }
 
+async function handleBatchUpload() {
+  const docs: Array<{ title: string; content: string; contentType?: string }> = []
+
+  // 1. 处理本地文件
+  if (selectedFiles.value.length > 0) {
+    for (const file of selectedFiles.value) {
+      try {
+        const content = await readFileContent(file)
+        const ext = file.name.split('.').pop()?.toLowerCase() || 'txt'
+        const contentType = ext === 'md' || ext === 'markdown' ? 'markdown' : 'text'
+        docs.push({
+          title: file.name.replace(/\.[^.]+$/, ''), // 去掉扩展名
+          content,
+          contentType,
+        })
+      } catch (e) {
+        ElMessage.warning(`读取文件 ${file.name} 失败`)
+      }
+    }
+  }
+
+  // 2. 处理手动输入
+  const lines = batchUploadText.value.trim().split('\n').filter(line => line.trim())
+  for (const line of lines) {
+    const parts = line.split('|').map(s => s.trim())
+    if (parts.length < 2 || !parts[0] || !parts[1]) {
+      ElMessage.warning(`格式错误：${line}`)
+      return
+    }
+    docs.push({
+      title: parts[0],
+      content: parts[1],
+      contentType: batchContentType.value,
+    })
+  }
+
+  if (docs.length === 0) {
+    ElMessage.warning('请选择文件或输入文档内容')
+    return
+  }
+
+  batchUploading.value = true
+  try {
+    await batchUploadDocuments(docs)
+    ElMessage.success(`成功上传 ${docs.length} 份文档`)
+    showBatchUploadDialog.value = false
+    batchUploadText.value = ''
+    selectedFiles.value = []
+    await fetchDocuments()
+  } catch { /* ignore */ }
+  finally { batchUploading.value = false }
+}
+
+function handleFileSelect(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (input.files) {
+    selectedFiles.value = [...selectedFiles.value, ...Array.from(input.files)]
+    input.value = '' // 清空 input 允许重复选择同文件
+  }
+}
+
+function handleFileDrop(e: DragEvent) {
+  if (e.dataTransfer?.files) {
+    selectedFiles.value = [...selectedFiles.value, ...Array.from(e.dataTransfer.files)]
+  }
+}
+
+function readFileContent(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsText(file)
+  })
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
+async function handleBatchDelete() {
+  if (selectedIds.value.size === 0) return
+  try {
+    await ElMessageBox.confirm(`确定删除选中的 ${selectedIds.value.size} 份文档？`, '确认批量删除', { type: 'warning' })
+    await batchDeleteDocuments(Array.from(selectedIds.value))
+    ElMessage.success('批量删除成功')
+    selectedIds.value = new Set()
+    await fetchDocuments()
+  } catch { /* ignore */ }
+}
+
+async function handleBatchIndex() {
+  if (selectedIds.value.size === 0) return
+  try {
+    await batchIndexDocuments(Array.from(selectedIds.value))
+    ElMessage.success(`成功索引 ${selectedIds.value.size} 份文档到 RAG`)
+  } catch { /* ignore */ }
+}
+
+async function handleKeywordIndex() {
+  if (!keywordIndex.value.trim()) return
+  keywordIndexing.value = true
+  try {
+    await batchIndexByKeyword(keywordIndex.value.trim())
+    ElMessage.success('关键词索引完成')
+    showKeywordDialog.value = false
+    keywordIndex.value = ''
+  } catch { /* ignore */ }
+  finally { keywordIndexing.value = false }
+}
+
 onMounted(fetchDocuments)
 </script>
 
@@ -259,10 +562,31 @@ onMounted(fetchDocuments)
   margin-bottom: 20px;
 }
 
+.header-top {
+  margin-bottom: 12px;
+}
+
+.doc-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.stats-count {
+  color: var(--color-text-secondary);
+}
+
+.stats-selected {
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
 .header-actions {
   display: flex;
   gap: 8px;
   align-items: center;
+  margin-bottom: 12px;
 }
 
 .search-box {
@@ -292,6 +616,22 @@ onMounted(fetchDocuments)
   color: var(--color-text-tertiary);
 }
 
+.search-clear {
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  border-radius: 2px;
+}
+
+.search-clear:hover {
+  color: var(--color-text-secondary);
+  background: var(--color-bg-hover);
+}
+
 .btn-secondary {
   display: flex;
   align-items: center;
@@ -315,6 +655,77 @@ onMounted(fetchDocuments)
 
 .upload-btn {
   cursor: pointer;
+}
+
+/* Batch Actions */
+.batch-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.batch-left {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.btn-batch {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 10px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  font-family: var(--font-sans);
+}
+
+.btn-batch:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.btn-batch:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-batch-danger:hover:not(:disabled) {
+  color: var(--color-error);
+  border-color: var(--color-error);
+  background: #fef2f2;
+}
+
+.btn-batch-accent:hover:not(:disabled) {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+.btn-text {
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: var(--color-accent);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.btn-text:hover {
+  background: var(--color-accent-subtle);
 }
 
 /* Document List */
@@ -347,6 +758,9 @@ onMounted(fetchDocuments)
 }
 
 .doc-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -358,6 +772,29 @@ onMounted(fetchDocuments)
 .doc-card:hover {
   border-color: var(--color-accent-subtle);
   box-shadow: var(--shadow-sm);
+}
+
+.doc-card.doc-selected {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+.doc-checkbox-wrap {
+  display: flex;
+  align-items: center;
+  padding-top: 2px;
+}
+
+.doc-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--color-accent);
+}
+
+.doc-body {
+  flex: 1;
+  min-width: 0;
 }
 
 .doc-header {
@@ -566,6 +1003,33 @@ onMounted(fetchDocuments)
   line-height: 1.6;
 }
 
+.form-select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  font-family: var(--font-sans);
+  outline: none;
+  transition: border-color 0.15s ease;
+  cursor: pointer;
+}
+
+.form-select:focus {
+  border-color: var(--color-accent);
+}
+
+.batch-upload-tip {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: var(--color-bg-subtle);
+  border-radius: var(--radius-sm);
+}
+
 .detail-meta {
   display: flex;
   gap: 8px;
@@ -637,5 +1101,128 @@ onMounted(fetchDocuments)
   color: var(--color-text-secondary);
   cursor: pointer;
   font-family: var(--font-sans);
+}
+
+/* File Drop Zone */
+.file-drop-zone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.file-drop-zone:hover {
+  border-color: var(--color-accent);
+  background: var(--color-bg-subtle);
+}
+
+.drop-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-tertiary);
+}
+
+.drop-content p {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.drop-hint {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+/* Selected Files */
+.selected-files {
+  margin-top: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.files-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--color-bg-subtle);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+}
+
+.files-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--color-border-subtle);
+  font-size: 13px;
+}
+
+.file-icon {
+  font-size: 16px;
+}
+
+.file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-size {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.file-remove {
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+}
+
+.file-remove:hover {
+  color: #ef4444;
+}
+
+/* Divider */
+.divider-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+.divider-or::before,
+.divider-or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
 }
 </style>
